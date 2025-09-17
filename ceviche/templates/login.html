@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}Iniciar Sesión - Sistema Cevichería{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 400px; margin: 50px auto;">
+    <h2 class="text-center mb-3">Iniciar Sesión</h2>
+    
+    <form id="loginForm" onsubmit="handleLogin(event)">
+        <div class="form-group">
+            <label for="username">Usuario:</label>
+            <input type="text" id="username" name="username" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="password">Contraseña:</label>
+            <input type="password" id="password" name="password" required>
+        </div>
+        
+        <button type="submit" class="btn" style="width: 100%;">Iniciar Sesión</button>
+    </form>
+    
+    <div class="text-center" style="margin-top: 20px;">
+        <p style="color: #6c757d; font-size: 0.9rem;">Sistema de Cevichería - Acceso para Personal</p>
+    </div>
+</div>
+
+<script>
+// Redirigir si ya está autenticado
+document.addEventListener('DOMContentLoaded', function() {
+    if (authToken && currentUser) {
+        window.location.href = '/dashboard';
+    }
+});
+
+// Manejar inicio de sesión
+async function handleLogin(event) {
+    event.preventDefault();
+    
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    
+    try {
+        const response = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ username, password })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            // Guardar token y datos del usuario
+            localStorage.setItem('authToken', data.access_token);
+            authToken = data.access_token;
+            currentUser = data.user;
+            
+            showAlert('Inicio de sesión exitoso', 'success');
+            updateNavbar();
+            
+            // Redirigir según el rol
+            setTimeout(() => {
+                if (currentUser.role === 'superadmin') {
+                    window.location.href = '/superadmin';
+                } else if (currentUser.role === 'admin') {
+                    window.location.href = '/admin';
+                } else {
+                    window.location.href = '/dashboard';
+                }
+            }, 1000);
+        } else {
+            showAlert(data.message || 'Error en el inicio de sesión', 'danger');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showAlert('Error de conexión', 'danger');
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,121 @@
+requisitos: comandas, arquitectura mvc (todo ordenado), roles, sesiones, uso de tokens,
+vistas: (mozo, cliente, cocina, caja, menu, administrador)
+
+cliente:	el cliente podrá ver el menú o lo que ofrece la cevichería al escanear un código QR desde su mesa, el cual lo redireccionará a la vista del menú virtual.
+		no será necesario registrarse ni iniciar sesión, solo escanear y navegar. desde esta vista podrá revisar los platos disponibles, sus descripciones, ingredientes, precios y algunas reseñas de otros clientes.
+
+menu virtual: 	Muestra los productos disponibles con una breve descripción, los ingredientes que lleva cada plato, y algunas pequeñas reseñas de clientes que ya los probaron. Cada producto estará acompañado de su precio actualizado. 
+		El menú debe estar organizado por categorías para facilitar la navegación (por ejemplo: entradas, ceviches, platos calientes, bebidas, postres). Los productos pueden tener etiquetas visuales como “picante”, “recomendado”, “nuevo” o “más vendido” para ayudar al cliente en su elección. 
+		Esta vista estará disponible para el cliente al escanear un código QR único ubicado en su mesa, o al ingresar desde un enlace en caso de delivery.
+		Al escanear el QR de la mesa, el sistema marcará automáticamente dicha mesa como "ocupada temporalmente" y se iniciará un temporizador de 10 minutos. Si el cliente no realiza ningún pedido dentro de ese plazo, la mesa volverá a mostrarse como disponible.
+		Esta lógica ayuda a evitar bloqueos innecesarios de mesas por inactividad.
+		En caso de que el mozo marque manualmente que la mesa ya realizó su pedido, el temporizador se desactiva y la mesa permanecerá ocupada hasta el cierre.
+
+mozo: 		El mozo podrá ver los sitios disponibles y no disponibles para acomodar al cliente, considerando que el local puede tener más de un piso, así como distintas zonas como niños, terraza, barra, 
+		zona de espera (en caso de pedidos para llevar), salón privado o eventos, y delivery. Los distintos pisos y zonas deben estar visibles en la interfaz del mozo para que pueda marcar la mesa como ocupada.
+		Para tomar el pedido, el mozo primero debe seleccionar la mesa junto con la zona que prefiera el cliente, facilitando así la correcta asignación y distribución del pedido en cocina.
+		Luego, desde la misma vista, podrá ubicar los platos organizados por categorías, incluyendo bebidas, para una selección rápida y sencilla.
+		Una vez que el cliente haya escogido todos los platos, el mozo podrá añadir modificadores, como bebidas adicionales o cortesías. Además, el cliente podrá especificar detalles particulares para cada plato, por ejemplo, "ceviche sin cebolla".
+		Al finalizar, el pedido se enviará automáticamente a cocina.
+
+		En caso de que un plato sea modificado o cancelado desde cocina, el mozo recibirá una alerta visual discreta (sin notificaciones emergentes ni sonidos) que le permitirá estar al tanto de la situación y comunicárselo al cliente si es necesario.
+		Adicionalmente, podrá visualizar en todo momento el estado de cada plato mediante un sistema de colores que facilita el seguimiento y evita la sobrecarga de información:
+	
+		- 🟢 En cola: el pedido fue recibido por cocina, pero aún no ha comenzado su preparación.
+		- 🟡 En preparación: el plato está siendo elaborado por la cocina.
+		- 🔴 Listo para entregar: el plato está terminado y listo para ser retirado.
+		- ⚪ Entregado / servido: el plato ya fue entregado al cliente.
+		- 🟠 Cancelado o modificado: el plato fue cancelado o tuvo cambios que requieren atención.
+
+		Estos colores estarán visibles junto a cada plato en la interfaz del mozo, ayudando a gestionar múltiples mesas de forma eficiente y sin distracciones.
+
+		Finalmente, el mozo podrá marcar los platos como entregados, cerrando el ciclo del pedido y actualizando el sistema de cocina.
+
+
+cocina: 
+   		Una vez que el mozo haya enviado el pedido del cliente, este aparecerá en la vista de cocina en tiempo real, mostrando información clave como el número de mesa, zona, piso, especificaciones especiales, nombre o ID del mozo, fecha y hora del pedido, 
+		y el tipo de consumo (para consumir en mesa, para llevar o evento privado). 
+   		Los pedidos se organizarán automáticamente por hora de llegada para facilitar la gestión.
+
+    		Las especificaciones y modificaciones indicadas por el cliente deberán ser resaltadas visualmente para que el personal de cocina pueda acatarlas correctamente.
+
+    		Según los platos pedidos, estos deben ser asignados a sus respectivas estaciones (por ejemplo: fríos, calientes, bebidas, postres), ya sea manualmente o automáticamente.
+
+    		Se implementará un sistema de notificaciones discretas para alertar al personal de cocina en caso de que un pedido sea cancelado o modificado, evitando interrupciones molestas pero garantizando que no se pierda información importante.
+
+    		La interfaz permitirá el uso tanto en pantalla táctil como mediante comandos rápidos por teclado, y contará con una función de pantalla completa o modo TV para cocinas más grandes.
+    		Cada plato dentro del pedido deberá pasar por diferentes etapas visibles en la interfaz, con estados representados por colores para facilitar el seguimiento rápido:
+
+    		- 🟢 En cola: plato recibido pero aún no iniciado.
+    		- 🟡 En preparación: plato en proceso activo de elaboración.
+    		- 🔴 Listo para entregar: plato terminado y disponible para entrega.
+    		- ⚪ Entregado / servido: plato retirado por el mozo o entregado al cliente.
+    		- 🟠 Cancelado o modificado: plato cancelado o modificado, con alerta inmediata al personal.
+
+	    	Además, la cocina tendrá acceso a un historial básico de pedidos finalizados, cancelados o modificados para revisión y trazabilidad.
+
+caja:		desde esta vista, el cajero podrá ver las comandas listas para ser cobradas. cada comanda mostrará el detalle de la mesa, zona, piso, mozo que atendió, hora del pedido, platos solicitados, cantidades y total a pagar.
+		el cajero podrá seleccionar la comanda correspondiente y procesar el pago, eligiendo entre los métodos disponibles como efectivo o tarjeta.
+		una vez recibido el pago, la comanda será marcada como cerrada y la mesa quedará libre para que el mozo pueda asignarla nuevamente a otro cliente.
+		el pago deberá quedar registrado en el sistema para control y posibles reportes futuros.
+		(opcional) se podría incluir un historial de transacciones con filtros por fecha, mozo o tipo de pago, accesible únicamente para el administrador y con acceso limitado para caja, en caso se requiera para auditorías.
+
+administrador:	desde esta vista, el administrador podrá supervisar el funcionamiento general del sistema.
+		tendrá acceso a todas las vistas (mozo, cocina, caja, menú virtual y cliente), con la posibilidad de consultar pedidos, pagos y estados de las mesas en tiempo real.
+		podrá realizar modificaciones simples como agregar, editar o eliminar productos del menú, así como cambiar precios o marcar productos como “agotados”.
+		también podrá configurar las zonas del local (como terraza, barra, salón privado, etc.), definir el número de mesas por zona y piso, y actualizar la disponibilidad general del espacio.
+		tendrá acceso a un historial básico de comandas finalizadas y ventas del día, útil para llevar un control general sin necesidad de reportes avanzados.
+		podrá gestionar los usuarios del sistema, como mozos y cajeros, asignándoles roles y accesos según su función.
+
+vista menu, vista para mozo (osea los sitios), vista para la cocina
+
+https://www.youtube.com/shorts/sbKPrVR-yqI
+https://www.youtube.com/shorts/64DPDCj09Jk
+para caja
+https://www.youtube.com/shorts/3LHnTQUi0bg
+
+idea para cliente
+https://www.youtube.com/shorts/8LGywKEKNqs
+
+1. Cliente
+
+Acciones:
+
+	Escanea un QR → redirige a vista del menú virtual
+
+	Puede ver: Platos, descripción, ingredientes, precio
+
+	Reseñas de otros clientes
+
+Vista cliente (pública, no requiere login):
+
+
+	/menu
+
+	Diseño responsivo
+
+	Botón para ver reseñas, ingredientes
+
+2. 🍽️ Mozo
+
+Acciones:
+
+	Ve mesas disponibles/no disponibles
+
+	Visualiza plano del local (pisos y zonas: terraza, barra, niños, etc.)
+
+	Selecciona mesa y zona
+
+	Toma pedido por categorías (comidas, bebidas)
+	
+	Añade modificadores y observaciones (ej. “sin cebolla”)
+
+	Envia pedido (comanda) a cocina
+
+Vista mozo (requiere login):
+
+/mozo/mesas
+
+/mozo/tomar-pedido
+
+/mozo/ordenes

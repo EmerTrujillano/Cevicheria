@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menú Virtual - Cevichería</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #006A96; /* Azul océano */
+            --secondary-color: #C8102E; /* Rojo peruano */
+            --accent-color: #F4B942; /* Dorado peruano */
+            --ocean-blue: #4ECDC4; /* Azul turquesa */
+            --deep-blue: #1B4C73; /* Azul profundo */
+            --coral: #FF6B6B; /* Coral */
+            --seafoam: #95E1D3; /* Verde mar */
+            --sand: #F8E6A0; /* Color arena */
+        }
+        
+        .qr-timer {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: linear-gradient(135deg, var(--accent-color), #FFD700);
+            color: var(--deep-blue);
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            z-index: 1000;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .qr-timer.expired {
+            background: linear-gradient(135deg, var(--secondary-color), #DC143C);
+            color: white;
+        }
+        .product-card {
+            transition: transform 0.2s;
+            border: none;
+            box-shadow: 0 2px 10px rgba(0,106,150,0.1);
+            border-left: 4px solid var(--ocean-blue);
+        }
+        .product-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,106,150,0.15);
+            border-left-color: var(--primary-color);
+        }
+        .tag {
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-right: 5px;
+        }
+        .tag-picante { background: var(--coral); color: white; }
+        .tag-recomendado { background: var(--seafoam); color: var(--deep-blue); }
+        .tag-nuevo { background: var(--primary-color); color: white; }
+        .tag-mas_vendido { background: var(--accent-color); color: var(--deep-blue); }
+        .table-info {
+            background: linear-gradient(135deg, #E3F2FD, #F0F8FF);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-left: 5px solid var(--ocean-blue);
+        }
+        .rating {
+            color: var(--accent-color);
+        }
+        .category-header {
+            background: linear-gradient(135deg, var(--primary-color), var(--deep-blue));
+            color: white;
+            padding: 15px;
+            border-radius: 10px 10px 0 0;
+            margin-top: 30px;
+        }
+        .navbar-brand {
+            font-weight: bold;
+            color: var(--primary-color) !important;
+            display: flex;
+            align-items: center;
+        }
+        .navbar-brand i {
+            color: var(--coral);
+            margin-right: 8px;
+        }
+        body {
+            background: linear-gradient(135deg, #F0F8FF 0%, #E3F2FD 100%);
+        }
+        .navbar {
+            background: rgba(255,255,255,0.95) !important;
+            backdrop-filter: blur(10px);
+        }
+        footer {
+            background: linear-gradient(135deg, var(--deep-blue), var(--primary-color)) !important;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <!-- Timer QR (si aplica) -->
+    {% if qr_session_id %}
+    <div id="qrTimer" class="qr-timer">
+        <i class="fas fa-clock"></i> <span id="timerText">Cargando...</span>
+    </div>
+    {% endif %}
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-white sticky-top shadow-sm">
+        <div class="container">
+            <a class="navbar-brand" href="#"><i class="fas fa-fish"></i> Cevichería Peruana</a>
+            
+            {% if table %}
+            <div class="navbar-text">
+                <small class="text-muted">
+                    Mesa {{ table.number }}
+                    {% if table.zone_name %} - {{ table.zone_name }}{% endif %}
+                    {% if table.floor_name %} ({{ table.floor_name }}){% endif %}
+                </small>
+            </div>
+            {% endif %}
+        </div>
+    </nav>
+
+    <div class="container my-4">
+        <!-- Información de la mesa -->
+        {% if table %}
+        <div class="table-info">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h5 class="mb-1"><i class="fas fa-chair"></i> Mesa {{ table.number }}</h5>
+                    <p class="mb-0 text-muted">
+                        {% if zone %}{{ zone.name }}{% endif %}
+                        {% if floor %} - {{ floor.name }}{% endif %}
+                        • Capacidad: {{ table.capacity }} personas
+                    </p>
+                </div>
+                <div class="col-md-4 text-end">
+                    {% if qr_session_id %}
+                    <small class="text-success">
+                        <i class="fas fa-qrcode"></i> Sesión QR Activa
+                    </small>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Mensaje de bienvenida -->
+        <div class="text-center mb-4">
+            <h2 class="text-primary mb-2">¡Bienvenido a nuestra Cevichería!</h2>
+            <p class="text-muted">Explora nuestro delicioso menú de comida peruana</p>
+        </div>
+
+        <!-- Menú por categorías -->
+        <div id="menuContainer">
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Cargando menú...</span>
+                </div>
+                <p class="mt-2 text-muted">Cargando nuestro delicioso menú...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-white py-4 mt-5">
+        <div class="container text-center">
+            <p class="mb-2">© 2025 Cevichería Peruana - Sabores auténticos del Perú</p>
+            <p class="mb-0 small text-muted">
+                <i class="fas fa-phone"></i> +51 1 234-5678 | 
+                <i class="fas fa-envelope"></i> info@cevicheria.com
+            </p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Configuración
+        const TABLE_ID = {% if table_id %}{{ table_id }}{% else %}null{% endif %};
+        const QR_SESSION_ID = '{% if qr_session_id %}{{ qr_session_id }}{% else %}{% endif %}';
+        
+        // Cargar menú
+        async function loadMenu() {
+            try {
+                const response = await fetch('/menu/products');
+                const data = await response.json();
+                
+                if (data.success) {
+                    renderMenu(data.data);
+                } else {
+                    showError('Error al cargar el menú');
+                }
+            } catch (error) {
+                showError('Error de conexión');
+            }
+        }
+        
+        // Renderizar menú
+        function renderMenu(categories) {
+            const container = document.getElementById('menuContainer');
+            let html = '';
+            
+            categories.forEach(categoryData => {
+                const category = categoryData.category;
+                const products = categoryData.products;
+                
+                html += `
+                    <div class="category-section mb-4">
+                        <div class="category-header">
+                            <h3 class="mb-1">${category.name}</h3>
+                            <p class="mb-0 opacity-75">${category.description}</p>
+                        </div>
+                        <div class="row g-3 p-3 bg-white">
+                `;
+                
+                products.forEach(product => {
+                    html += renderProductCard(product);
+                });
+                
+                html += `
+                        </div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+        
+        // Renderizar tarjeta de producto
+        function renderProductCard(product) {
+            const tags = product.tags.map(tag => 
+                `<span class="tag tag-${tag}">${getTagName(tag)}</span>`
+            ).join('');
+            
+            const rating = product.average_rating > 0 ? 
+                `<div class="rating">
+                    ${generateStars(product.average_rating)}
+                    <small class="text-muted">(${product.reviews_count})</small>
+                </div>` : '';
+            
+            return `
+                <div class="col-md-6 col-lg-4">
+                    <div class="card product-card h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h5 class="card-title mb-1">${product.name}</h5>
+                                <span class="badge bg-primary fs-6">S/ ${product.price}</span>
+                            </div>
+                            
+                            ${tags}
+                            
+                            <p class="card-text text-muted small mt-2">${product.description}</p>
+                            
+                            ${product.ingredients.length > 0 ? 
+                                `<p class="small text-secondary">
+                                    <i class="fas fa-leaf"></i> ${product.ingredients.join(', ')}
+                                </p>` : ''
+                            }
+                            
+                            ${rating}
+                            
+                            <div class="mt-2">
+                                <small class="text-muted">
+                                    <i class="fas fa-clock"></i> ${product.preparation_time} min
+                                    ${getSpiceIcon(product.spice_level)}
+                                </small>
+                            </div>
+                            
+                            ${!product.is_available ? 
+                                '<div class="mt-2"><span class="badge bg-danger">Agotado</span></div>' : ''
+                            }
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Funciones auxiliares
+        function getTagName(tag) {
+            const tagNames = {
+                'picante': 'Picante',
+                'recomendado': 'Recomendado',
+                'nuevo': 'Nuevo',
+                'mas_vendido': 'Más Vendido'
+            };
+            return tagNames[tag] || tag;
+        }
+        
+        function generateStars(rating) {
+            const fullStars = Math.floor(rating);
+            const hasHalf = rating % 1 >= 0.5;
+            let stars = '';
+            
+            for (let i = 0; i < fullStars; i++) {
+                stars += '<i class="fas fa-star"></i>';
+            }
+            if (hasHalf) {
+                stars += '<i class="fas fa-star-half-alt"></i>';
+            }
+            for (let i = fullStars + (hasHalf ? 1 : 0); i < 5; i++) {
+                stars += '<i class="far fa-star"></i>';
+            }
+            
+            return stars;
+        }
+        
+        function getSpiceIcon(level) {
+            const icons = {
+                'mild': '<i class="fas fa-pepper-hot text-success"></i>',
+                'medium': '<i class="fas fa-pepper-hot text-warning"></i>',
+                'hot': '<i class="fas fa-pepper-hot text-danger"></i>',
+                'very_hot': '<i class="fas fa-fire text-danger"></i>'
+            };
+            return icons[level] || icons['mild'];
+        }
+        
+        function showError(message) {
+            document.getElementById('menuContainer').innerHTML = `
+                <div class="text-center py-5">
+                    <i class="fas fa-exclamation-triangle text-warning fa-3x mb-3"></i>
+                    <p class="text-muted">${message}</p>
+                    <button class="btn btn-primary" onclick="loadMenu()">
+                        <i class="fas fa-refresh"></i> Reintentar
+                    </button>
+                </div>
+            `;
+        }
+        
+        // Timer QR
+        {% if qr_session_id %}
+        let timerInterval;
+        
+        async function updateTimer() {
+            try {
+                const response = await fetch('/menu/qr/{{ table.number }}/status');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const timeRemaining = data.data.time_remaining;
+                    const timerElement = document.getElementById('qrTimer');
+                    const timerText = document.getElementById('timerText');
+                    
+                    if (timeRemaining > 0) {
+                        const minutes = Math.floor(timeRemaining / 60);
+                        const seconds = timeRemaining % 60;
+                        timerText.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                        timerElement.className = 'qr-timer';
+                    } else {
+                        timerText.textContent = 'Sesión expirada';
+                        timerElement.className = 'qr-timer expired';
+                        clearInterval(timerInterval);
+                    }
+                }
+            } catch (error) {
+                console.error('Error actualizando timer:', error);
+            }
+        }
+        
+        // Iniciar timer
+        updateTimer();
+        timerInterval = setInterval(updateTimer, 1000);
+        
+        // Extender sesión en interacción
+        let lastInteraction = Date.now();
+        document.addEventListener('click', () => {
+            const now = Date.now();
+            if (now - lastInteraction > 60000) { // 1 minuto
+                fetch('/menu/qr/{{ table.number }}/extend', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+                lastInteraction = now;
+            }
+        });
+        {% endif %}
+        
+        // Cargar menú al inicio
+        document.addEventListener('DOMContentLoaded', loadMenu);
+    </script>
+</body>
+</html>

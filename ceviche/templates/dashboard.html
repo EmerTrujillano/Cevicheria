@@ -1,0 +1,686 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Sistema Ferretería{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>Dashboard de Usuario</h2>
+    <p>Panel personalizado según tus permisos de acceso a las diferentes áreas del sistema.</p>
+    <div id="userInfo"></div>
+</div>
+
+<!-- Mostrar áreas disponibles -->
+<div class="card">
+    <h3>🏢 Áreas del Sistema</h3>
+    <button onclick="loadUserAreas()" class="btn">🔄 Actualizar Permisos</button>
+    <div id="areasContainer" style="margin-top: 20px;"></div>
+</div>
+
+<!-- Área de Inventario -->
+<div class="card" id="inventarioArea" style="display: none;">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h3>📦 Inventario de Productos</h3>
+        <button onclick="closeArea('inventario')" class="btn-close" title="Cerrar" style="background: #e74c3c; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-weight: bold;">✕</button>
+    </div>
+    <button onclick="loadProducts()" class="btn">🔄 Recargar Productos</button>
+    <div id="productsContainer" style="margin-top: 20px;"></div>
+</div>
+
+<!-- Área de Usuarios (solo si tiene permisos) -->
+<div class="card" id="usuariosArea" style="display: none;">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h3>👥 Gestión de Usuarios</h3>
+        <button onclick="closeArea('usuarios')" class="btn-close" title="Cerrar" style="background: #e74c3c; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-weight: bold;">✕</button>
+    </div>
+    <button onclick="loadUsers()" class="btn">🔄 Recargar Usuarios</button>
+    <div id="usersContainer" style="margin-top: 20px;"></div>
+</div>
+
+<!-- Área de Roles (solo si tiene permisos) -->
+<div class="card" id="rolesArea" style="display: none;">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h3>🔑 Gestión de Roles</h3>
+        <button onclick="closeArea('roles')" class="btn-close" title="Cerrar" style="background: #e74c3c; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-weight: bold;">✕</button>
+    </div>
+    <p>Acceso especial para cambio de roles del sistema.</p>
+    <div id="rolesContainer" style="margin-top: 20px;"></div>
+</div>
+
+<!-- Área de Categorías (solo si tiene permisos) -->
+<div class="card" id="categoriasArea" style="display: none;">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h3>📁 Gestión de Categorías</h3>
+        <button onclick="closeArea('categorias')" class="btn-close" title="Cerrar" style="background: #e74c3c; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-weight: bold;">✕</button>
+    </div>
+    <p>Administración de categorías de productos.</p>
+    <div id="categoriasContainer" style="margin-top: 20px;"></div>
+</div>
+
+<!-- Área de Reportes (solo si tiene permisos) -->
+<div class="card" id="reportesArea" style="display: none;">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h3>📊 Reportes y Estadísticas</h3>
+        <button onclick="closeArea('reportes')" class="btn-close" title="Cerrar" style="background: #e74c3c; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-weight: bold;">✕</button>
+    </div>
+    <p>Reportes del sistema y estadísticas de uso.</p>
+    <div id="reportesContainer" style="margin-top: 20px;"></div>
+</div>
+
+<!-- Área de Configuración (solo si tiene permisos) -->
+<div class="card" id="configuracionArea" style="display: none;">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h3>⚙️ Configuración del Sistema</h3>
+        <button onclick="closeArea('configuracion')" class="btn-close" title="Cerrar" style="background: #e74c3c; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-weight: bold;">✕</button>
+    </div>
+    <p>Configuraciones generales del sistema.</p>
+    <div id="configuracionContainer" style="margin-top: 20px;"></div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    if (!authToken) {
+        window.location.href = '/login';
+        return;
+    }
+    
+    loadUserInfo();
+    loadUserAreas();
+});
+
+async function loadUserInfo() {
+    try {
+        const response = await authenticatedFetch('/api/auth/profile');
+        
+        if (response.ok) {
+            const data = await response.json();
+            const user = data.user;
+            currentUser = user;
+            
+            document.getElementById('userInfo').innerHTML = `
+                <div style="background-color: #e8f4fd; padding: 15px; border-radius: 4px; margin-top: 15px;">
+                    <h4>👤 Información del Usuario</h4>
+                    <p><strong>Usuario:</strong> ${user.username}</p>
+                    <p><strong>Rol:</strong> ${user.role}</p>
+                    <p><strong>Registrado:</strong> ${new Date(user.created_at).toLocaleDateString()}</p>
+                </div>
+            `;
+        } else {
+            showAlert('Error cargando información del usuario', 'danger');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showAlert('Error de conexión', 'danger');
+    }
+}
+
+async function loadUserAreas() {
+    try {
+        const response = await authenticatedFetch('/api/permissions/areas');
+        
+        if (response.ok) {
+            const data = await response.json();
+            displayUserAreas(data.areas);
+            // Inicializar validación periódica solo después de cargar exitosamente las áreas
+            initializePeriodicValidation();
+        } else {
+            showAlert('Error cargando áreas del usuario', 'danger');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showAlert('Error de conexión', 'danger');
+    }
+}
+
+function displayUserAreas(areas) {
+    const container = document.getElementById('areasContainer');
+    let html = '<div class="grid">';
+    
+    // Filtrar solo las áreas a las que tiene acceso
+    const accessibleAreas = areas.filter(area => area.has_access);
+    
+    if (accessibleAreas.length === 0) {
+        html += `
+            <div class="card" style="text-align: center; padding: 30px;">
+                <h4>🔒 Sin Acceso a Áreas</h4>
+                <p>No tienes acceso a ninguna área del sistema en este momento.</p>
+                <p>Contacta al administrador para solicitar permisos.</p>
+            </div>
+        `;
+    } else {
+        accessibleAreas.forEach(area => {
+            let statusColor = '#27ae60'; // Siempre verde porque solo mostramos las accesibles
+            let statusIcon = '✅';
+            let statusText = 'Acceso Permitido';
+            
+            let tempPermissionInfo = '';
+            if (area.temporary_permission) {
+                const expiresAt = new Date(area.temporary_permission.expires_at);
+                const now = new Date();
+                const isExpired = expiresAt <= now;
+                
+                // Si el permiso temporal está expirado, no mostrar esta área
+                if (isExpired) {
+                    return; // Saltar esta área
+                }
+                
+                // Calcular tiempo restante
+                const timeRemaining = calculateTimeRemaining(expiresAt);
+                
+                // Formatear fecha de manera consistente para el parsing
+                const formattedExpireDate = expiresAt.toLocaleString('es-PE', {
+                    year: 'numeric',
+                    month: '2-digit', 
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    timeZone: 'America/Lima'
+                });
+                
+                tempPermissionInfo = `
+                    <div style="background-color: #fff3cd; padding: 10px; border-radius: 4px; margin-top: 10px;">
+                        <small><strong>⏰ Permiso Temporal:</strong><br>
+                        Otorgado por: ${area.temporary_permission.granted_by_username || area.temporary_permission.granted_by}<br>
+                        Expira: ${formattedExpireDate}<br>
+                        <span style="color: green;" id="countdown-${area.name}">✅ ACTIVO (${timeRemaining})</span></small>
+                    </div>
+                `;
+            }
+            
+            html += `
+                <div class="card">
+                    <h4>${area.name.toUpperCase()}</h4>
+                    <p>${area.description}</p>
+                    <p><strong>Roles por defecto:</strong> ${area.default_roles.join(', ')}</p>
+                    <div style="color: ${statusColor}; font-weight: bold;">
+                        ${statusIcon} ${statusText}
+                    </div>
+                    ${tempPermissionInfo}
+                    <button class="btn" onclick="showArea('${area.name}')" style="margin-top: 10px;">Acceder</button>
+                </div>
+            `;
+        });
+    }
+    
+    html += '</div>';
+    container.innerHTML = html;
+    
+    // Iniciar contadores para permisos temporales
+    startCountdowns();
+}
+
+function calculateTimeRemaining(expiresAt) {
+    const now = new Date();
+    const diff = expiresAt - now;
+    
+    if (diff <= 0) return 'EXPIRADO';
+    
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+    
+    if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+    if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+    if (minutes > 0) return `${minutes}m ${seconds}s`;
+    return `${seconds}s`;
+}
+
+function startCountdowns() {
+    // Actualizar contadores cada 30 segundos
+    setInterval(() => {
+        loadUserAreas(); // Recargar para mantener actualizado y ocultar áreas expiradas
+    }, 20000);
+    
+    // También actualizar contadores cada segundo para mejor experiencia de usuario
+    setInterval(() => {
+        // Buscar todos los elementos de countdown por ID que contengan 'countdown-'
+        const countdownElements = document.querySelectorAll('[id^="countdown-"]');
+        
+        countdownElements.forEach(element => {
+            // Extraer el nombre del área del ID
+            const areaName = element.id.replace('countdown-', '');
+            
+            // Buscar el div padre que contiene la información del permiso temporal
+            const tempPermissionDiv = element.closest('div');
+            if (tempPermissionDiv) {
+                // Buscar la fecha de expiración en el HTML usando una expresión regular mejorada
+                const htmlContent = tempPermissionDiv.innerHTML;
+                const dateRegex = /Expira:\s*(\d{1,2}\/\d{1,2}\/\d{4}[,\s]+\d{1,2}:\d{2}:\d{2})/;
+                const match = htmlContent.match(dateRegex);
+                
+                if (match) {
+                    try {
+                        // Convertir la fecha al formato correcto
+                        const dateString = match[1];
+                        // Formato esperado: "08/09/2025, 21:30:45"
+                        const [datePart, timePart] = dateString.split(', ');
+                        const [day, month, year] = datePart.split('/');
+                        const formattedDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${timePart}`;
+                        
+                        const expiresAt = new Date(formattedDate);
+                        
+                        // Verificar que la fecha es válida
+                        if (!isNaN(expiresAt.getTime())) {
+                            const timeRemaining = calculateTimeRemaining(expiresAt);
+                            
+                            if (timeRemaining === 'EXPIRADO') {
+                                // Si expiró, recargar áreas para ocultarla
+                                loadUserAreas();
+                                return;
+                            }
+                            
+                            // Actualizar el contenido del elemento
+                            element.innerHTML = `✅ ACTIVO (${timeRemaining})`;
+                        } else {
+                            console.log(`Fecha inválida para ${areaName}: ${formattedDate}`);
+                        }
+                    } catch (e) {
+                        console.error(`Error actualizando countdown para ${areaName}:`, e);
+                        console.log(`Fecha encontrada: ${match[1]}`);
+                    }
+                } else {
+                    console.log(`No se encontró fecha de expiración para ${areaName}`);
+                    console.log(`HTML: ${htmlContent.substring(0, 200)}...`);
+                }
+            }
+        });
+    }, 1000);
+}
+
+function showArea(areaName) {
+    // Ocultar todas las áreas
+    document.querySelectorAll('#inventarioArea, #usuariosArea, #rolesArea, #categoriasArea, #reportesArea, #configuracionArea').forEach(area => {
+        area.style.display = 'none';
+    });
+    
+    // Mostrar el área solicitada
+    const areaElement = document.getElementById(areaName + 'Area');
+    if (areaElement) {
+        areaElement.style.display = 'block';
+        areaElement.scrollIntoView({ behavior: 'smooth' });
+        
+        // Cargar datos específicos del área
+        switch(areaName) {
+            case 'inventario':
+                loadProducts();
+                break;
+            case 'usuarios':
+                loadUsers();
+                break;
+            case 'roles':
+                loadRoles();
+                break;
+            case 'categorias':
+                loadCategories();
+                break;
+            case 'reportes':
+                loadReports();
+                break;
+            case 'configuracion':
+                loadConfiguration();
+                break;
+        }
+    }
+}
+
+function closeArea(areaName) {
+    // Ocultar el área específica
+    const areaElement = document.getElementById(areaName + 'Area');
+    if (areaElement) {
+        areaElement.style.display = 'none';
+        
+        // Opcional: hacer scroll de vuelta hacia las tarjetas de áreas
+        const areasContainer = document.getElementById('areasContainer');
+        if (areasContainer) {
+            areasContainer.scrollIntoView({ behavior: 'smooth' });
+        }
+    }
+}
+
+async function loadProducts() {
+    try {
+        const response = await authenticatedFetch('/api/products');
+        
+        if (response.ok) {
+            const data = await response.json();
+            const products = data.products || data;
+            displayProducts(products);
+        } else if (response.status === 403) {
+            const error = await response.json();
+            showAlert(error.message, 'danger');
+        } else {
+            showAlert('Error cargando productos', 'danger');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showAlert('Error de conexión', 'danger');
+    }
+}
+
+function displayProducts(products) {
+    const container = document.getElementById('productsContainer');
+    
+    if (!products || products.length === 0) {
+        container.innerHTML = '<p>No hay productos disponibles.</p>';
+        return;
+    }
+    
+    let html = '<div class="grid">';
+    
+    products.forEach(product => {
+        html += `
+            <div class="card">
+                <h4>${product.name}</h4>
+                <p><strong>Precio:</strong> $${product.price}</p>
+                <p><strong>Stock:</strong> ${product.stock}</p>
+                <p><strong>Marca:</strong> ${product.brand || 'N/A'}</p>
+                <p><strong>Categoría:</strong> ${product.category || 'N/A'}</p>
+                ${product.description ? `<p><strong>Descripción:</strong> ${product.description}</p>` : ''}
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+async function loadUsers() {
+    try {
+        const response = await authenticatedFetch('/api/users/list');
+        
+        if (response.ok) {
+            const data = await response.json();
+            const users = data.users || data;
+            displayUsers(users);
+        } else if (response.status === 403) {
+            const error = await response.json();
+            showAlert(error.message, 'danger');
+        } else {
+            showAlert('Error cargando usuarios', 'danger');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showAlert('Error de conexión', 'danger');
+    }
+}
+
+function displayUsers(users) {
+    const container = document.getElementById('usersContainer');
+    
+    if (!users || users.length === 0) {
+        container.innerHTML = '<p>No hay usuarios registrados.</p>';
+        return;
+    }
+    
+    let html = `
+        <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+            <thead>
+                <tr style="background-color: #f8f9fa;">
+                    <th style="padding: 10px; border: 1px solid #ddd;">Usuario</th>
+                    <th style="padding: 10px; border: 1px solid #ddd;">Rol</th>
+                    <th style="padding: 10px; border: 1px solid #ddd;">Fecha de Registro</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+    
+    users.forEach(user => {
+        let roleColor = '';
+        if (user.role === 'superadmin') roleColor = 'color: #9b59b6; font-weight: bold;';
+        else if (user.role === 'admin') roleColor = 'color: #e74c3c; font-weight: bold;';
+        
+        html += `
+            <tr>
+                <td style="padding: 10px; border: 1px solid #ddd;">${user.username}</td>
+                <td style="padding: 10px; border: 1px solid #ddd; ${roleColor}">${user.role}</td>
+                <td style="padding: 10px; border: 1px solid #ddd;">${new Date(user.created_at).toLocaleDateString()}</td>
+            </tr>
+        `;
+    });
+    
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
+async function loadRoles() {
+    // Para el área de roles, mostramos gestión completa
+    loadUsers(); // Reutilizar la función de usuarios (que ahora usa /api/users/list)
+}
+
+async function loadCategories() {
+    try {
+        const response = await authenticatedFetch('/api/categories');
+        
+        if (response.ok) {
+            const data = await response.json();
+            const categories = data.categories || data;
+            displayCategories(categories);
+        } else if (response.status === 403) {
+            const error = await response.json();
+            showAlert(error.message, 'danger');
+        } else {
+            showAlert('Error cargando categorías', 'danger');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showAlert('Error de conexión', 'danger');
+    }
+}
+
+function displayCategories(categories) {
+    const container = document.getElementById('categoriasContainer');
+    
+    if (!categories || categories.length === 0) {
+        container.innerHTML = '<p>No hay categorías disponibles.</p>';
+        return;
+    }
+    
+    let html = '<div class="grid">';
+    
+    categories.forEach(category => {
+        html += `
+            <div class="card">
+                <h5>${category.name}</h5>
+                <p>${category.description || 'Sin descripción'}</p>
+                <p><small>Creada: ${new Date(category.created_at).toLocaleDateString('es-PE')}</small></p>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+async function loadReports() {
+    const container = document.getElementById('reportesContainer');
+    
+    try {
+        const [productsResponse, usersResponse] = await Promise.all([
+            authenticatedFetch('/api/products'),
+            authenticatedFetch('/api/users/list')
+        ]);
+        
+        if (productsResponse.ok && usersResponse.ok) {
+            const products = await productsResponse.json();
+            const users = await usersResponse.json();
+            
+            displayReports(products, users);
+        } else {
+            container.innerHTML = '<p>Error cargando datos para reportes</p>';
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        container.innerHTML = '<p>Error de conexión</p>';
+    }
+}
+
+function displayReports(products, users) {
+    const container = document.getElementById('reportesContainer');
+    
+    const productsArray = products.products || products;
+    const usersArray = users.users || users;
+    
+    let html = `
+        <div class="grid">
+            <div class="card">
+                <h4>📊 Resumen General</h4>
+                <p><strong>Total Productos:</strong> ${productsArray.length}</p>
+                <p><strong>Total Usuarios:</strong> ${usersArray.length}</p>
+                <p><strong>Fecha Reporte:</strong> ${new Date().toLocaleString('es-PE', {timeZone: 'America/Lima'})}</p>
+            </div>
+            <div class="card">
+                <h4>🏷️ Productos por Stock</h4>
+                <p><strong>Stock Bajo (&lt;10):</strong> ${productsArray.filter ? productsArray.filter(p => p.stock < 10).length : 0}</p>
+                <p><strong>Stock Normal (10-50):</strong> ${productsArray.filter ? productsArray.filter(p => p.stock >= 10 && p.stock <= 50).length : 0}</p>
+                <p><strong>Stock Alto (&gt;50):</strong> ${productsArray.filter ? productsArray.filter(p => p.stock > 50).length : 0}</p>
+            </div>
+        </div>
+    `;
+    
+    container.innerHTML = html;
+}
+
+async function loadConfiguration() {
+    const container = document.getElementById('configuracionContainer');
+    
+    let html = `
+        <div class="card">
+            <h4>⚙️ Configuración del Sistema</h4>
+            <div style="margin-top: 15px;">
+                <h5>🕒 Zona Horaria</h5>
+                <p><strong>Zona Horaria Actual:</strong> America/Lima (UTC-5)</p>
+                <p><strong>Hora Actual:</strong> <span id="currentTime">${new Date().toLocaleString('es-PE', {timeZone: 'America/Lima'})}</span></p>
+                
+                <h5 style="margin-top: 20px;">🔐 Configuración de Permisos</h5>
+                <p><strong>Duración máxima permiso temporal:</strong> 7 días</p>
+                <p><strong>Roles disponibles:</strong> Usuario, Admin, Superadmin</p>
+                
+                <h5 style="margin-top: 20px;">💾 Base de Datos</h5>
+                <p><strong>Tipo:</strong> SQLite</p>
+                <p><strong>Estado:</strong> <span style="color: green;">Conectada ✅</span></p>
+            </div>
+        </div>
+    `;
+    
+    container.innerHTML = html;
+    
+    // Actualizar hora cada segundo
+    setInterval(() => {
+        const timeElement = document.getElementById('currentTime');
+        if (timeElement) {
+            timeElement.textContent = new Date().toLocaleString('es-PE', {timeZone: 'America/Lima'});
+        }
+    }, 1000);
+}
+
+// === VALIDACIÓN PERIÓDICA DE USUARIO ===
+let userValidationInterval = null;
+
+function startPeriodicUserValidation() {
+    // Validar inmediatamente
+    validateUserExistence();
+    
+    // Validar cada 30 segundos (20000 ms)
+    userValidationInterval = setInterval(() => {
+        validateUserExistence();
+    }, 20000); // 30 segundos
+}
+
+async function validateUserExistence() {
+    try {
+        const token = localStorage.getItem('authToken');
+        if (!token) {
+            forceLogout('No hay token de autenticación');
+            return;
+        }
+
+        const response = await fetch('/api/auth/validate-username-only', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            forceLogout('Error de conexión con el servidor');
+            return;
+        }
+
+        const data = await response.json();
+
+        if (!data.valid) {
+            
+            let userMessage = 'Tu sesión ha sido cerrada';
+            switch(data.reason) {
+                case 'user_not_exists':
+                    userMessage = 'Tu cuenta ha sido eliminada del sistema';
+                    break;
+                case 'invalid_session':
+                    userMessage = 'Tu sesión ha expirado o es inválida';
+                    break;
+                case 'validation_error':
+                    userMessage = 'Error de validación de sesión';
+                    break;
+                default:
+                    userMessage = data.message || 'Tu sesión ha sido cerrada';
+            }
+            
+            forceLogout(userMessage);
+        } else {
+            // Usuario válido - continuar normalmente
+        }
+
+    } catch (error) {
+        console.error('[VALIDATION] Error en validación periódica:', error);
+        // En caso de error, mantener la sesión pero mostrar warning
+    }
+}
+
+function forceLogout(message) {
+    // Detener validación periódica
+    if (userValidationInterval) {
+        clearInterval(userValidationInterval);
+        userValidationInterval = null;
+    }
+    
+    // Limpiar storage
+    localStorage.removeItem('authToken');
+    sessionStorage.clear();
+    
+    // Redirigir silenciosamente al login
+    window.location.href = '/login';
+}
+
+function stopPeriodicUserValidation() {
+    if (userValidationInterval) {
+        clearInterval(userValidationInterval);
+        userValidationInterval = null;
+    }
+}
+
+// Iniciar validación solo después de que todo esté cargado exitosamente
+function initializePeriodicValidation() {
+    // Esperar 30 segundos antes de comenzar la validación para no interferir con la carga inicial
+    setTimeout(() => {
+        startPeriodicUserValidation();
+    }, 20000); // 30 segundos de espera
+}
+
+// Detener validación cuando se cierra/recarga la página
+window.addEventListener('beforeunload', function() {
+    stopPeriodicUserValidation();
+});
+
+// También validar cuando la página vuelve a tener foco (por si el usuario cambió de pestaña)
+document.addEventListener('visibilitychange', function() {
+    if (!document.hidden && userValidationInterval === null) {
+        // También esperar un poco antes de reiniciar por si acaso
+        setTimeout(() => {
+            startPeriodicUserValidation();
+        }, 5000); // 5 segundos al volver el foco
+    }
+});
+</script>
+{% endblock %}

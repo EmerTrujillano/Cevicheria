@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Cocina - Cevichería</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #006A96; /* Azul océano */
+            --secondary-color: #C8102E; /* Rojo peruano */
+            --accent-color: #F4B942; /* Dorado peruano */
+            --ocean-blue: #4ECDC4; /* Azul turquesa */
+            --deep-blue: #1B4C73; /* Azul profundo */
+            --coral: #FF6B6B; /* Coral */
+            --seafoam: #95E1D3; /* Verde mar */
+            --sand: #F8E6A0; /* Color arena */
+            --kitchen-fire: #FF4500; /* Naranja fuego */
+        }
+        
+        .kitchen-header {
+            background: linear-gradient(135deg, var(--kitchen-fire) 0%, var(--secondary-color) 100%);
+            color: white;
+            padding: 20px 0;
+        }
+        .station-card {
+            border-radius: 15px;
+            border: none;
+            box-shadow: 0 4px 15px rgba(0,106,150,0.1);
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        .station-header {
+            padding: 15px 20px;
+            color: white;
+            font-weight: 600;
+        }
+        .station-cold { background: linear-gradient(135deg, var(--ocean-blue), var(--primary-color)); }
+        .station-hot { background: linear-gradient(135deg, var(--kitchen-fire), var(--secondary-color)); }
+        .station-drinks { background: linear-gradient(135deg, var(--seafoam), var(--ocean-blue)); }
+        .station-desserts { background: linear-gradient(135deg, var(--accent-color), var(--sand)); }
+        
+        .order-item {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-left: 5px solid #dee2e6;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        .order-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 15px rgba(0,106,150,0.15);
+        }
+        .order-item.pending { border-left-color: var(--accent-color); background: linear-gradient(135deg, #FFF9E6, #FFFEF7); }
+        .order-item.preparing { border-left-color: var(--kitchen-fire); background: linear-gradient(135deg, #FFE6E6, #FFF2F2); }
+        .order-item.ready { border-left-color: var(--seafoam); background: linear-gradient(135deg, #E8F5E8, #F0FFF0); }
+        .order-item.urgent { border-left-color: var(--secondary-color); background: linear-gradient(135deg, #FFEAEA, #FFE6E6); }
+        
+        .timer-badge {
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            padding: 5px 10px;
+            border-radius: 15px;
+        }
+        .timer-normal { background: linear-gradient(135deg, #E3F2FD, #F0F8FF); color: var(--primary-color); }
+        .timer-warning { background: linear-gradient(135deg, #FFF3E0, #FFFBF0); color: var(--kitchen-fire); }
+        .timer-critical { background: linear-gradient(135deg, #FFEBEE, #FFF0F0); color: var(--secondary-color); }
+        
+        .priority-high {
+            position: relative;
+        }
+        .priority-high::before {
+            content: "🔥";
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            font-size: 1.2rem;
+        }
+        
+        .sound-controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        
+        .stats-mini {
+            display: flex;
+            gap: 15px;
+            margin-top: 10px;
+        }
+        .stat-mini {
+            text-align: center;
+            flex: 1;
+        }
+        .stat-mini .number {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #495057;
+        }
+        .stat-mini .label {
+            font-size: 0.8rem;
+            color: #6c757d;
+        }
+        
+        .alert-banner {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1001;
+            display: none;
+            background: var(--secondary-color);
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.7; }
+            50% { opacity: 1; }
+            100% { opacity: 0.7; }
+        }
+        .urgent-pulse {
+            animation: pulse 1.5s infinite;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #F0F8FF 0%, #E3F2FD 100%);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color), var(--deep-blue));
+            border: none;
+        }
+        .btn-success {
+            background: linear-gradient(135deg, var(--seafoam), #20C997);
+            border: none;
+            color: var(--deep-blue);
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <!-- Controles de sonido -->
+    <div class="sound-controls">
+        <button id="soundToggle" class="btn btn-outline-secondary btn-sm">
+            <i class="fas fa-volume-up"></i>
+        </button>
+    </div>
+
+    <!-- Banner de alertas -->
+    <div id="alertBanner" class="alert alert-danger alert-banner text-center">
+        <strong>¡Órdenes urgentes pendientes!</strong>
+    </div>
+
+    <!-- Header -->
+    <div class="kitchen-header">
+        <div class="container-fluid">
+            <div class="row align-items-center">
+                <div class="col-md-4">
+                    <h2><i class="fas fa-fire"></i> Panel de Cocina</h2>
+                    <p class="mb-0 opacity-75">Gestión de órdenes en tiempo real</p>
+                </div>
+                <div class="col-md-4 text-center">
+                    <div class="row">
+                        <div class="col-4">
+                            <div class="stat-mini text-white">
+                                <div class="number" id="totalPendientes">0</div>
+                                <div class="label">Pendientes</div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="stat-mini text-white">
+                                <div class="number" id="totalPreparando">0</div>
+                                <div class="label">Preparando</div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="stat-mini text-white">
+                                <div class="number" id="totalListos">0</div>
+                                <div class="label">Listos</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 text-end">
+                    <div class="d-flex align-items-center justify-content-end gap-3">
+                        <span id="currentTime" class="h5 mb-0"></span>
+                        <button class="btn btn-light btn-sm" onclick="refreshAll()">
+                            <i class="fas fa-refresh"></i> Actualizar
+                        </button>
+                        <a href="/auth/logout" class="btn btn-outline-light btn-sm">
+                            <i class="fas fa-sign-out-alt"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estaciones de cocina -->
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <!-- Estación Fría -->
+            <div class="col-lg-3 col-md-6">
+                <div class="station-card">
+                    <div class="station-header station-cold">
+                        <i class="fas fa-snowflake"></i> Estación Fría
+                        <span class="badge bg-white text-primary ms-2" id="coldCount">0</span>
+                    </div>
+                    <div class="p-3">
+                        <div id="coldStation" class="station-content">
+                            <div class="text-center py-4 text-muted">
+                                <i class="fas fa-clock fa-2x mb-2"></i>
+                                <p>No hay órdenes pendientes</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Estación Caliente -->
+            <div class="col-lg-3 col-md-6">
+                <div class="station-card">
+                    <div class="station-header station-hot">
+                        <i class="fas fa-fire"></i> Estación Caliente
+                        <span class="badge bg-white text-danger ms-2" id="hotCount">0</span>
+                    </div>
+                    <div class="p-3">
+                        <div id="hotStation" class="station-content">
+                            <div class="text-center py-4 text-muted">
+                                <i class="fas fa-clock fa-2x mb-2"></i>
+                                <p>No hay órdenes pendientes</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Estación Bebidas -->
+            <div class="col-lg-3 col-md-6">
+                <div class="station-card">
+                    <div class="station-header station-drinks">
+                        <i class="fas fa-glass-cheers"></i> Bebidas
+                        <span class="badge bg-white text-info ms-2" id="drinksCount">0</span>
+                    </div>
+                    <div class="p-3">
+                        <div id="drinksStation" class="station-content">
+                            <div class="text-center py-4 text-muted">
+                                <i class="fas fa-clock fa-2x mb-2"></i>
+                                <p>No hay órdenes pendientes</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Estación Postres -->
+            <div class="col-lg-3 col-md-6">
+                <div class="station-card">
+                    <div class="station-header station-desserts">
+                        <i class="fas fa-birthday-cake"></i> Postres
+                        <span class="badge bg-white text-warning ms-2" id="dessertsCount">0</span>
+                    </div>
+                    <div class="p-3">
+                        <div id="dessertsStation" class="station-content">
+                            <div class="text-center py-4 text-muted">
+                                <i class="fas fa-clock fa-2x mb-2"></i>
+                                <p>No hay órdenes pendientes</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para detalles de orden -->
+    <div class="modal fade" id="orderModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Detalles de Orden</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="modalContent">
+                    <!-- Contenido dinámico -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Variables globales
+        let soundEnabled = true;
+        let currentOrders = {};
+        let refreshInterval;
+        
+        // Audio para notificaciones
+        const newOrderSound = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+D2v2ccBjeF0vbUfS0GJWt5zMmCJCIBE3m5zmfVOZ/SFnGNWvqhKZLuUIXg+V5hXhVfiFCDxqvVPa7Rv4mJiRlSoEhqv1rNS7X5ZOGR5pFmKHWMSo+1QM2Iq4+LgR9OpkdrsVDNXLXzZtuHZ4+FLQrPDQ==');
+        
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', function() {
+            updateTime();
+            setInterval(updateTime, 1000);
+            loadOrders();
+            startAutoRefresh();
+            
+            // Configurar sonido
+            document.getElementById('soundToggle').addEventListener('click', toggleSound);
+        });
+        
+        // Actualizar hora
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('currentTime').textContent = now.toLocaleTimeString();
+        }
+        
+        // Cargar órdenes
+        async function loadOrders() {
+            try {
+                const response = await fetch('/kitchen/orders');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const newOrders = data.data;
+                    checkForNewOrders(newOrders);
+                    currentOrders = newOrders;
+                    renderStations(newOrders);
+                    updateStatistics(newOrders);
+                    checkUrgentOrders(newOrders);
+                }
+            } catch (error) {
+                console.error('Error cargando órdenes:', error);
+            }
+        }
+        
+        // Verificar nuevas órdenes
+        function checkForNewOrders(newOrders) {
+            const newOrderIds = Object.keys(newOrders);
+            const currentOrderIds = Object.keys(currentOrders);
+            
+            newOrderIds.forEach(orderId => {
+                if (!currentOrderIds.includes(orderId) && soundEnabled) {
+                    playNewOrderSound();
+                }
+            });
+        }
+        
+        // Reproducir sonido de nueva orden
+        function playNewOrderSound() {
+            if (soundEnabled) {
+                newOrderSound.play().catch(e => console.log('No se pudo reproducir el sonido'));
+            }
+        }
+        
+        // Toggle sonido
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            const button = document.getElementById('soundToggle');
+            const icon = button.querySelector('i');
+            
+            if (soundEnabled) {
+                icon.className = 'fas fa-volume-up';
+                button.classList.remove('btn-secondary');
+                button.classList.add('btn-outline-secondary');
+            } else {
+                icon.className = 'fas fa-volume-mute';
+                button.classList.remove('btn-outline-secondary');
+                button.classList.add('btn-secondary');
+            }
+        }
+        
+        // Renderizar estaciones
+        function renderStations(orders) {
+            const stations = {
+                cold: { items: [], container: 'coldStation', counter: 'coldCount' },
+                hot: { items: [], container: 'hotStation', counter: 'hotCount' },
+                drinks: { items: [], container: 'drinksStation', counter: 'drinksCount' },
+                desserts: { items: [], container: 'dessertsStation', counter: 'dessertsCount' }
+            };
+            
+            // Clasificar items por estación
+            Object.values(orders).forEach(order => {
+                order.items.forEach(item => {
+                    const station = getItemStation(item.product_name);
+                    if (stations[station]) {
+                        stations[station].items.push({
+                            ...item,
+                            order_id: order.id,
+                            table_number: order.table_number,
+                            order_time: order.created_at,
+                            special_instructions: order.special_instructions
+                        });
+                    }
+                });
+            });
+            
+            // Renderizar cada estación
+            Object.keys(stations).forEach(stationKey => {
+                const station = stations[stationKey];
+                renderStation(station.container, station.items);
+                document.getElementById(station.counter).textContent = station.items.length;
+            });
+        }
+        
+        // Determinar estación del producto
+        function getItemStation(productName) {
+            const name = productName.toLowerCase();
+            
+            if (name.includes('ceviche') || name.includes('tiradito') || name.includes('ensalada')) {
+                return 'cold';
+            } else if (name.includes('bebida') || name.includes('jugo') || name.includes('chicha')) {
+                return 'drinks';
+            } else if (name.includes('postre') || name.includes('suspiro') || name.includes('mazamorra')) {
+                return 'desserts';
+            } else {
+                return 'hot';
+            }
+        }
+        
+        // Renderizar estación individual
+        function renderStation(containerId, items) {
+            const container = document.getElementById(containerId);
+            
+            if (items.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-4 text-muted">
+                        <i class="fas fa-check-circle fa-2x mb-2"></i>
+                        <p>¡Todo listo!</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Ordenar por prioridad (tiempo de espera)
+            items.sort((a, b) => {
+                const timeA = new Date(a.order_time);
+                const timeB = new Date(b.order_time);
+                return timeA - timeB;
+            });
+            
+            let html = '';
+            items.forEach(item => {
+                html += renderOrderItem(item);
+            });
+            
+            container.innerHTML = html;
+        }
+        
+        // Renderizar item de orden
+        function renderOrderItem(item) {
+            const orderTime = new Date(item.order_time);
+            const now = new Date();
+            const minutesWaiting = Math.floor((now - orderTime) / 60000);
+            
+            const timerInfo = getTimerInfo(minutesWaiting);
+            const statusClass = getItemStatusClass(item.status, minutesWaiting);
+            
+            return `
+                <div class="order-item ${statusClass}" onclick="showOrderDetails(${item.order_id}, ${item.id})">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                            <h6 class="mb-1">Mesa ${item.table_number}</h6>
+                            <span class="badge bg-secondary">Orden #${item.order_id}</span>
+                        </div>
+                        <span class="timer-badge ${timerInfo.class}">
+                            ${minutesWaiting}min
+                        </span>
+                    </div>
+                    
+                    <h5 class="mb-2">${item.product_name}</h5>
+                    <p class="mb-1"><strong>Cantidad:</strong> ${item.quantity}</p>
+                    
+                    ${item.special_instructions ? `
+                        <div class="alert alert-warning alert-sm mb-2">
+                            <i class="fas fa-sticky-note"></i> ${item.special_instructions}
+                        </div>
+                    ` : ''}
+                    
+                    <div class="d-flex gap-2 mt-2">
+                        ${renderActionButtons(item)}
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Obtener información del timer
+        function getTimerInfo(minutes) {
+            if (minutes < 10) {
+                return { class: 'timer-normal' };
+            } else if (minutes < 20) {
+                return { class: 'timer-warning' };
+            } else {
+                return { class: 'timer-critical' };
+            }
+        }
+        
+        // Obtener clase de estado del item
+        function getItemStatusClass(status, minutesWaiting) {
+            if (minutesWaiting > 20) return 'urgent urgent-pulse';
+            if (status === 'preparing') return 'preparing';
+            if (status === 'ready') return 'ready';
+            return 'pending';
+        }
+        
+        // Renderizar botones de acción
+        function renderActionButtons(item) {
+            if (item.status === 'pending' || item.status === 'in_queue') {
+                return `
+                    <button class="btn btn-primary btn-sm" onclick="startPreparation(${item.id}); event.stopPropagation();">
+                        <i class="fas fa-play"></i> Iniciar
+                    </button>
+                    <button class="btn btn-outline-danger btn-sm" onclick="cancelItem(${item.id}); event.stopPropagation();">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `;
+            } else if (item.status === 'preparing') {
+                return `
+                    <button class="btn btn-success btn-sm" onclick="markReady(${item.id}); event.stopPropagation();">
+                        <i class="fas fa-check"></i> Listo
+                    </button>
+                    <button class="btn btn-outline-danger btn-sm" onclick="cancelItem(${item.id}); event.stopPropagation();">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `;
+            } else if (item.status === 'ready') {
+                return `
+                    <span class="badge bg-success">
+                        <i class="fas fa-check"></i> Listo para servir
+                    </span>
+                `;
+            }
+            return '';
+        }
+        
+        // Actualizar estadísticas
+        function updateStatistics(orders) {
+            let pendientes = 0, preparando = 0, listos = 0;
+            
+            Object.values(orders).forEach(order => {
+                order.items.forEach(item => {
+                    if (item.status === 'pending' || item.status === 'in_queue') {
+                        pendientes++;
+                    } else if (item.status === 'preparing') {
+                        preparando++;
+                    } else if (item.status === 'ready') {
+                        listos++;
+                    }
+                });
+            });
+            
+            document.getElementById('totalPendientes').textContent = pendientes;
+            document.getElementById('totalPreparando').textContent = preparando;
+            document.getElementById('totalListos').textContent = listos;
+        }
+        
+        // Verificar órdenes urgentes
+        function checkUrgentOrders(orders) {
+            let hasUrgent = false;
+            const now = new Date();
+            
+            Object.values(orders).forEach(order => {
+                const orderTime = new Date(order.created_at);
+                const minutesWaiting = Math.floor((now - orderTime) / 60000);
+                
+                if (minutesWaiting > 20) {
+                    hasUrgent = true;
+                }
+            });
+            
+            const banner = document.getElementById('alertBanner');
+            if (hasUrgent) {
+                banner.style.display = 'block';
+            } else {
+                banner.style.display = 'none';
+            }
+        }
+        
+        // Acciones de cocina
+        async function startPreparation(itemId) {
+            await updateItemStatus(itemId, 'preparing');
+        }
+        
+        async function markReady(itemId) {
+            await updateItemStatus(itemId, 'ready');
+        }
+        
+        async function cancelItem(itemId) {
+            if (confirm('¿Estás seguro de cancelar este item?')) {
+                await updateItemStatus(itemId, 'cancelled');
+            }
+        }
+        
+        async function updateItemStatus(itemId, status) {
+            try {
+                const response = await fetch(`/kitchen/items/${itemId}/${status}`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    loadOrders(); // Recargar órdenes
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (error) {
+                alert('Error de conexión');
+            }
+        }
+        
+        // Mostrar detalles de orden
+        function showOrderDetails(orderId, itemId) {
+            // Implementar modal con detalles
+            console.log('Mostrar detalles:', orderId, itemId);
+        }
+        
+        // Auto-refresh
+        function startAutoRefresh() {
+            refreshInterval = setInterval(loadOrders, 10000); // Cada 10 segundos
+        }
+        
+        function refreshAll() {
+            loadOrders();
+        }
+        
+        // Cleanup al salir
+        window.addEventListener('beforeunload', function() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+            }
+        });
+    </script>
+</body>
+</html>

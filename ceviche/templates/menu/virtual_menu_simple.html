@@ -82,22 +82,46 @@
             float: right;
         }
         
-        .add-btn {
-            background: linear-gradient(135deg, var(--seafoam), #20C997);
-            border: none;
-            color: var(--primary-color);
-            padding: 8px 20px;
-            border-radius: 20px;
-            font-weight: 600;
+        .product-tags {
             margin-top: 10px;
         }
         
-        .cart-floating {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: var(--secondary-color);
+        .tag {
+            display: inline-block;
+            background: var(--seafoam);
+            color: var(--primary-color);
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            margin: 2px;
+            font-weight: 500;
+        }
+        
+        .tag.picante { background: #FFE5E5; color: #D63384; }
+        .tag.recomendado { background: #FFF3CD; color: #B08800; }
+        .tag.nuevo { background: #D1ECF1; color: #0C5460; }
+        .tag.mas_vendido { background: #D4EDDA; color: #155724; }
+        
+        .ingredients {
+            font-style: italic;
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+        
+        .rating {
+            color: #FFC107;
+            margin-top: 8px;
+        }
+        
+        .info-message {
+            background: linear-gradient(135deg, var(--ocean-blue), var(--seafoam));
             color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px;
+            text-align: center;
+            font-weight: 500;
             border-radius: 50px;
             padding: 15px 25px;
             box-shadow: 0 4px 20px rgba(200,16,46,0.3);
@@ -117,177 +141,138 @@
     </div>
     {% endif %}
     
-    <!-- Ceviches -->
-    <div class="category-section">
-        <div class="category-title">
-            🐟 Ceviches
-        </div>
-        
-        <div class="product-card">
-            <div class="product-name">Ceviche Clásico</div>
-            <div class="product-description">Pescado fresco marinado en limón, cebolla morada, ají amarillo y cilantro</div>
-            <div class="product-price">S/ 25.00</div>
-            <button class="add-btn" onclick="addToCart('Ceviche Clásico', 25.00)">
-                <i class="fas fa-plus"></i> Agregar
-            </button>
-        </div>
-        
-        <div class="product-card">
-            <div class="product-name">Ceviche Mixto</div>
-            <div class="product-description">Pescado, camarones y pulpo en leche de tigre especial</div>
-            <div class="product-price">S/ 35.00</div>
-            <button class="add-btn" onclick="addToCart('Ceviche Mixto', 35.00)">
-                <i class="fas fa-plus"></i> Agregar
-            </button>
-        </div>
-        
-        <div class="product-card">
-            <div class="product-name">Ceviche de Conchas Negras</div>
-            <div class="product-description">Deliciosas conchas negras en leche de tigre tumbesina</div>
-            <div class="product-price">S/ 40.00</div>
-            <button class="add-btn" onclick="addToCart('Ceviche de Conchas Negras', 40.00)">
-                <i class="fas fa-plus"></i> Agregar
-            </button>
-        </div>
+    <div class="info-message">
+        <i class="fas fa-info-circle"></i> 
+        Navega por nuestro menú y cuando estés listo, llama a tu mozo para realizar el pedido
     </div>
     
-    <!-- Tiraditos -->
-    <div class="category-section">
-        <div class="category-title">
-            🔪 Tiraditos
-        </div>
-        
-        <div class="product-card">
-            <div class="product-name">Tiradito Clásico</div>
-            <div class="product-description">Finas láminas de pescado con ají amarillo y limón</div>
-            <div class="product-price">S/ 28.00</div>
-            <button class="add-btn" onclick="addToCart('Tiradito Clásico', 28.00)">
-                <i class="fas fa-plus"></i> Agregar
-            </button>
-        </div>
-        
-        <div class="product-card">
-            <div class="product-name">Tiradito Nikkei</div>
-            <div class="product-description">Fusión peruano-japonesa con salsa especial</div>
-            <div class="product-price">S/ 32.00</div>
-            <button class="add-btn" onclick="addToCart('Tiradito Nikkei', 32.00)">
-                <i class="fas fa-plus"></i> Agregar
-            </button>
-        </div>
-    </div>
-    
-    <!-- Arroces -->
-    <div class="category-section">
-        <div class="category-title">
-            🍚 Arroces
-        </div>
-        
-        <div class="product-card">
-            <div class="product-name">Arroz con Mariscos</div>
-            <div class="product-description">Arroz especial con mariscos frescos y culantro</div>
-            <div class="product-price">S/ 38.00</div>
-            <button class="add-btn" onclick="addToCart('Arroz con Mariscos', 38.00)">
-                <i class="fas fa-plus"></i> Agregar
-            </button>
-        </div>
-        
-        <div class="product-card">
-            <div class="product-name">Chaufa de Mariscos</div>
-            <div class="product-description">Arroz chaufa peruano con mariscos y sillao</div>
-            <div class="product-price">S/ 35.00</div>
-            <button class="add-btn" onclick="addToCart('Chaufa de Mariscos', 35.00)">
-                <i class="fas fa-plus"></i> Agregar
-            </button>
-        </div>
-    </div>
-    
-    <!-- Bebidas -->
-    <div class="category-section">
-        <div class="category-title">
-            🥤 Bebidas
-        </div>
-        
-        <div class="product-card">
-            <div class="product-name">Chicha Morada</div>
-            <div class="product-description">Refrescante bebida tradicional peruana</div>
-            <div class="product-price">S/ 8.00</div>
-            <button class="add-btn" onclick="addToCart('Chicha Morada', 8.00)">
-                <i class="fas fa-plus"></i> Agregar
-            </button>
-        </div>
-        
-        <div class="product-card">
-            <div class="product-name">Inca Kola</div>
-            <div class="product-description">La bebida del sabor nacional</div>
-            <div class="product-price">S/ 6.00</div>
-            <button class="add-btn" onclick="addToCart('Inca Kola', 6.00)">
-                <i class="fas fa-plus"></i> Agregar
-            </button>
-        </div>
-        
-        <div class="product-card">
-            <div class="product-name">Agua Mineral</div>
-            <div class="product-description">Agua mineral sin gas 500ml</div>
-            <div class="product-price">S/ 4.00</div>
-            <button class="add-btn" onclick="addToCart('Agua Mineral', 4.00)">
-                <i class="fas fa-plus"></i> Agregar
-            </button>
-        </div>
-    </div>
-    
-    <!-- Carrito flotante -->
-    <div class="cart-floating" onclick="viewCart()">
-        <i class="fas fa-shopping-cart"></i>
-        <span id="cart-count">0</span> platos
+    <div id="menu-container">
+        <!-- El menú se cargará dinámicamente aquí -->
     </div>
     
     <script>
-        let cart = [];
-        
-        function addToCart(name, price) {
-            cart.push({name: name, price: price});
-            updateCartDisplay();
-            
-            // Mostrar confirmación
-            alert(`${name} agregado al pedido`);
-        }
-        
-        function updateCartDisplay() {
-            document.getElementById('cart-count').textContent = cart.length;
-        }
-        
-        function viewCart() {
-            if (cart.length === 0) {
-                alert('Tu pedido está vacío');
-                return;
+        // Cargar menú desde la base de datos
+        async function loadMenu() {
+            try {
+                const response = await fetch('/menu/products');
+                const data = await response.json();
+                
+                if (data.success) {
+                    renderMenu(data.data);
+                } else {
+                    document.getElementById('menu-container').innerHTML = 
+                        '<div class="alert alert-danger">Error al cargar el menú</div>';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('menu-container').innerHTML = 
+                    '<div class="alert alert-danger">Error al cargar el menú</div>';
             }
+        }
+        
+        function renderMenu(categories) {
+            const container = document.getElementById('menu-container');
+            let html = '';
             
-            let cartText = 'Tu Pedido:\n\n';
-            let total = 0;
-            
-            cart.forEach(item => {
-                cartText += `${item.name} - S/ ${item.price.toFixed(2)}\n`;
-                total += item.price;
+            categories.forEach(category => {
+                if (category.products && category.products.length > 0) {
+                    html += `
+                        <div class="category-section">
+                            <div class="category-title">
+                                ${getCategoryIcon(category.category.name)} ${category.category.name}
+                            </div>
+                    `;
+                    
+                    category.products.forEach(product => {
+                        html += renderProduct(product);
+                    });
+                    
+                    html += '</div>';
+                }
             });
             
-            cartText += `\nTotal: S/ ${total.toFixed(2)}`;
-            cartText += '\n\n¿Confirmar pedido?';
-            
-            if (confirm(cartText)) {
-                // Aquí enviarías el pedido al servidor
-                alert('¡Pedido enviado! Un mozo te atenderá pronto.');
-                cart = [];
-                updateCartDisplay();
-            }
+            container.innerHTML = html;
         }
         
-        // Mostrar mensaje de bienvenida
+        function renderProduct(product) {
+            const tags = product.tags || [];
+            const tagsHtml = tags.map(tag => 
+                `<span class="tag ${tag}">${getTagLabel(tag)}</span>`
+            ).join('');
+            
+            const rating = product.average_rating || 0;
+            const ratingHtml = rating > 0 ? `
+                <div class="rating">
+                    ${'★'.repeat(Math.floor(rating))}${'☆'.repeat(5 - Math.floor(rating))} 
+                    (${rating.toFixed(1)}) • ${product.reviews_count || 0} reseñas
+                </div>
+            ` : '';
+            
+            const imageHtml = product.image_url ? 
+                `<img src="${product.image_url}" alt="${product.name}" style="width: 100%; max-height: 200px; object-fit: cover; border-radius: 8px; margin-bottom: 10px;">` : '';
+            
+            return `
+                <div class="product-card">
+                    ${imageHtml}
+                    <div class="product-name">${product.name}</div>
+                    <div class="product-description">${product.description || ''}</div>
+                    ${product.ingredients ? `<div class="ingredients">Ingredientes: ${product.ingredients}</div>` : ''}
+                    <div class="product-price">S/ ${product.price.toFixed(2)}</div>
+                    <div class="product-tags">${tagsHtml}</div>
+                    ${ratingHtml}
+                </div>
+            `;
+        }
+        
+        function getCategoryIcon(categoryName) {
+            const icons = {
+                'Ceviches': '🐟',
+                'Tiraditos': '🔪',
+                'Arroces': '🍚',
+                'Bebidas': '🥤',
+                'Entradas': '🍤',
+                'Platos Calientes': '🔥',
+                'Postres': '🍰'
+            };
+            return icons[categoryName] || '🍽️';
+        }
+        
+        function getTagLabel(tag) {
+            const labels = {
+                'picante': '🌶️ Picante',
+                'recomendado': '⭐ Recomendado',
+                'nuevo': '🆕 Nuevo',
+                'mas_vendido': '🏆 Más Vendido'
+            };
+            return labels[tag] || tag;
+        }
+        
+        // Inicializar cuando se carga la página
         window.onload = function() {
+            loadMenu();
+            
             {% if table_id %}
+            // Marcar mesa como temporalmente ocupada
+            markTableAsTemporarilyOccupied({{ table_id }});
+            
             setTimeout(() => {
-                alert('¡Bienvenido a nuestra Cevichería! Mesa {{ table_id }}\n\nNavega por nuestro menú y haz tu pedido.');
+                alert('¡Bienvenido a nuestra Cevichería! Mesa {{ table_id }}\n\nNavega por nuestro menú y cuando estés listo, llama a tu mozo para realizar el pedido.');
             }, 1000);
             {% endif %}
+        }
+        
+        async function markTableAsTemporarilyOccupied(tableId) {
+            try {
+                await fetch('/api/tables/occupy-temporarily', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ table_id: tableId })
+                });
+            } catch (error) {
+                console.error('Error marking table as occupied:', error);
+            }
         }
     </script>
 </body>

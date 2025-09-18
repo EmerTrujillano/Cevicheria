@@ -1,8 +1,10 @@
 from datetime import datetime, timedelta
 from config.extensions import db, bcrypt
 from models import User
+from models.user_session import UserSession
 from flask_jwt_extended import create_access_token
 from services.session_service import SessionService
+from werkzeug.security import check_password_hash
 
 class AuthService:
     @staticmethod
@@ -58,9 +60,9 @@ class AuthService:
             return None, f'Error al registrar usuario: {str(e)}'
 
     @staticmethod
-    def authenticate_user(username, password):
+    def authenticate_user(username, password, force_new=False):
         """Autenticar usuario y generar token"""
-        print(f"[AUTH_SERVICE] Intentando autenticar usuario: {username}")
+        print(f"[AUTH_SERVICE] Intentando autenticar usuario: {username}, force_new: {force_new}")
         
         try:
             user = User.query.filter_by(username=username).first()
@@ -68,13 +70,29 @@ class AuthService:
             
             if user:
                 print(f"[AUTH_SERVICE] Usuario ID: {user.id}, Rol: {user.role}")
-                password_valid = bcrypt.check_password_hash(user.password, password)
-                print(f"[AUTH_SERVICE] Contraseña válida: {password_valid}")
+                
+                # Verificar contraseña usando el método del modelo User
+                password_valid = False
+                try:
+                    # Usar el método check_password del modelo User
+                    password_valid = user.check_password(password)
+                    print(f"[AUTH_SERVICE] Contraseña válida: {password_valid}")
+                except Exception as e:
+                    print(f"[AUTH_SERVICE] Error verificando contraseña: {str(e)}")
+                    print(f"[AUTH_SERVICE] Contraseña incorrecta para usuario: {username}")
                 
                 if password_valid:
                     print(f"[AUTH_SERVICE] Contraseña válida, verificando disponibilidad de sesión")
                     
-                    # Intentar iniciar nueva sesión
+                    # Verificar sesiones activas ANTES de intentar crear nueva
+                    existing_sessions = UserSession.get_user_sessions(user.id, active_only=True)
+                    
+                    if existing_sessions and not force_new:
+                        # Retornar información sobre sesiones existentes para que el frontend pueda manejarlas
+                        print(f"[AUTH_SERVICE] Usuario {username} ya tiene sesiones activas y force_new=False")
+                        return None, None, f"Ya tienes una sesión activa. ¿Quieres cerrar las sesiones remotas e iniciar nueva sesión?"
+                    
+                    # Intentar iniciar nueva sesión usando método de compatibilidad
                     session_token, session_error = SessionService.start_session(user.id, token_expiry_hours=24)
                     
                     if session_error:

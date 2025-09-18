@@ -1,0 +1,378 @@
+{% extends "base.html" %}
+{% block title %}Monitoreo de Sesiones - Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1><i class="fas fa-users-cog"></i> Monitoreo de Sesiones Activas</h1>
+                <button class="btn btn-outline-secondary" onclick="refreshSessions()">
+                    <i class="fas fa-sync-alt"></i> Actualizar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estadísticas -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <i class="fas fa-users fa-2x text-primary mb-2"></i>
+                    <h4 id="totalSessions">0</h4>
+                    <p class="mb-0">Sesiones Activas</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <i class="fas fa-user-tie fa-2x text-danger mb-2"></i>
+                    <h4 id="adminSessions">0</h4>
+                    <p class="mb-0">Administradores</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <i class="fas fa-concierge-bell fa-2x text-primary mb-2"></i>
+                    <h4 id="waiterSessions">0</h4>
+                    <p class="mb-0">Mozos</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <i class="fas fa-utensils fa-2x text-warning mb-2"></i>
+                    <h4 id="kitchenSessions">0</h4>
+                    <p class="mb-0">Cocina</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="row mb-3">
+        <div class="col-md-4">
+            <input type="text" id="searchSessions" class="form-control" placeholder="Buscar por usuario o IP...">
+        </div>
+        <div class="col-md-3">
+            <select id="filterRole" class="form-select">
+                <option value="">Todos los roles</option>
+                <option value="admin">Administrador</option>
+                <option value="waiter">Mozo</option>
+                <option value="kitchen">Cocina</option>
+                <option value="cashier">Cajero</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <select id="filterDevice" class="form-select">
+                <option value="">Todos los dispositivos</option>
+                <option value="Chrome">Chrome</option>
+                <option value="Firefox">Firefox</option>
+                <option value="Safari">Safari</option>
+                <option value="Edge">Edge</option>
+                <option value="Mobile">Móvil</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <button class="btn btn-warning w-100" onclick="closeAllSessions()" title="Cerrar todas las sesiones">
+                <i class="fas fa-sign-out-alt"></i> Cerrar Todas
+            </button>
+        </div>
+    </div>
+
+    <!-- Tabla de sesiones -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Usuario</th>
+                                    <th>Rol</th>
+                                    <th>IP</th>
+                                    <th>Dispositivo</th>
+                                    <th>Inicio</th>
+                                    <th>Última Actividad</th>
+                                    <th>Expira</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sessionsTableBody">
+                                <!-- Sesiones se cargarán aquí -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let sessions = [];
+let refreshInterval;
+
+// Cargar sesiones al inicializar la página
+document.addEventListener('DOMContentLoaded', function() {
+    loadSessions();
+    setupFilters();
+    
+    // Auto-refresh cada 30 segundos
+    refreshInterval = setInterval(loadSessions, 30000);
+});
+
+// Limpiar interval al salir de la página
+window.addEventListener('beforeunload', function() {
+    if (refreshInterval) {
+        clearInterval(refreshInterval);
+    }
+});
+
+async function loadSessions() {
+    try {
+        const response = await authenticatedFetch('/admin/api/active-sessions');
+        const data = await response.json();
+        
+        if (data.success) {
+            sessions = data.data;
+            renderSessions(sessions);
+            updateStatistics();
+        } else {
+            showAlert('Error al cargar sesiones: ' + data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showAlert('Error al cargar sesiones', 'error');
+    }
+}
+
+function renderSessions(sessionsToRender) {
+    const tbody = document.getElementById('sessionsTableBody');
+    tbody.innerHTML = '';
+    
+    if (sessionsToRender.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" class="text-center text-muted">
+                    <i class="fas fa-users-slash fa-2x mb-2"></i><br>
+                    No hay sesiones activas
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    sessionsToRender.forEach(session => {
+        const createdAt = new Date(session.created_at).toLocaleString();
+        const lastActivity = new Date(session.last_activity).toLocaleString();
+        const expiresAt = session.expires_at ? 
+            new Date(session.expires_at).toLocaleString() : 
+            'Sin expiración';
+        
+        const timeAgo = getTimeAgo(new Date(session.last_activity));
+        const isRecent = (Date.now() - new Date(session.last_activity).getTime()) < 300000; // 5 minutos
+        
+        const row = `
+            <tr class="${isRecent ? 'table-success' : ''}">
+                <td>
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-circle text-success me-2" title="Activo"></i>
+                        <div>
+                            <strong>${session.user.username}</strong>
+                            ${session.user.full_name ? `<br><small class="text-muted">${session.user.full_name}</small>` : ''}
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <span class="badge bg-${getRoleBadgeColor(session.user.role)}">${getRoleDisplayName(session.user.role)}</span>
+                    ${session.user.estacion ? `<br><small class="text-muted">${session.user.estacion}</small>` : ''}
+                </td>
+                <td>
+                    <code>${session.ip_address}</code>
+                </td>
+                <td>
+                    <i class="fas fa-${getDeviceIcon(session.device_info)} me-1"></i>
+                    ${session.device_info || 'Desconocido'}
+                </td>
+                <td>
+                    <small>${createdAt}</small>
+                </td>
+                <td>
+                    <small>${lastActivity}</small>
+                    <br><span class="badge bg-${isRecent ? 'success' : 'warning'}">${timeAgo}</span>
+                </td>
+                <td>
+                    <small>${expiresAt}</small>
+                </td>
+                <td>
+                    <button class="btn btn-outline-danger btn-sm" onclick="closeSession('${session.session_id}')" title="Cerrar sesión">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+        tbody.insertAdjacentHTML('beforeend', row);
+    });
+}
+
+function updateStatistics() {
+    const stats = {
+        total: sessions.length,
+        admin: sessions.filter(s => s.user.role === 'admin').length,
+        waiter: sessions.filter(s => s.user.role === 'waiter').length,
+        kitchen: sessions.filter(s => s.user.role === 'kitchen').length,
+        cashier: sessions.filter(s => s.user.role === 'cashier').length
+    };
+    
+    document.getElementById('totalSessions').textContent = stats.total;
+    document.getElementById('adminSessions').textContent = stats.admin;
+    document.getElementById('waiterSessions').textContent = stats.waiter;
+    document.getElementById('kitchenSessions').textContent = stats.kitchen + stats.cashier;
+}
+
+function getRoleBadgeColor(role) {
+    const colors = {
+        'admin': 'danger',
+        'waiter': 'primary',
+        'kitchen': 'warning',
+        'cashier': 'success'
+    };
+    return colors[role] || 'secondary';
+}
+
+function getRoleDisplayName(role) {
+    const names = {
+        'admin': 'Admin',
+        'waiter': 'Mozo',
+        'kitchen': 'Cocina',
+        'cashier': 'Cajero'
+    };
+    return names[role] || role;
+}
+
+function getDeviceIcon(deviceInfo) {
+    if (!deviceInfo) return 'question';
+    
+    const device = deviceInfo.toLowerCase();
+    if (device.includes('chrome')) return 'chrome';
+    if (device.includes('firefox')) return 'firefox';
+    if (device.includes('safari')) return 'safari';
+    if (device.includes('edge')) return 'edge';
+    if (device.includes('mobile') || device.includes('android') || device.includes('iphone')) return 'mobile';
+    return 'desktop';
+}
+
+function getTimeAgo(date) {
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    
+    if (diffMins < 1) return 'Ahora';
+    if (diffMins < 60) return `${diffMins}m`;
+    
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h`;
+    
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays}d`;
+}
+
+async function closeSession(sessionId) {
+    if (!confirm('¿Estás seguro de que deseas cerrar esta sesión?')) {
+        return;
+    }
+    
+    try {
+        const response = await authenticatedFetch(`/admin/api/sessions/${sessionId}/close`, {
+            method: 'POST'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showAlert(data.message, 'success');
+            loadSessions();
+        } else {
+            showAlert('Error: ' + data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showAlert('Error al cerrar sesión', 'error');
+    }
+}
+
+async function closeAllSessions() {
+    if (!confirm('¿Estás seguro de que deseas cerrar TODAS las sesiones activas? Esto desconectará a todos los usuarios.')) {
+        return;
+    }
+    
+    try {
+        const promises = sessions.map(session => 
+            authenticatedFetch(`/admin/api/sessions/${session.session_id}/close`, {
+                method: 'POST'
+            })
+        );
+        
+        await Promise.all(promises);
+        
+        showAlert('Todas las sesiones han sido cerradas', 'success');
+        loadSessions();
+    } catch (error) {
+        console.error('Error:', error);
+        showAlert('Error al cerrar sesiones', 'error');
+    }
+}
+
+function setupFilters() {
+    const searchInput = document.getElementById('searchSessions');
+    const roleFilter = document.getElementById('filterRole');
+    const deviceFilter = document.getElementById('filterDevice');
+    
+    function applyFilters() {
+        let filtered = sessions;
+        
+        // Filtro de búsqueda
+        const searchTerm = searchInput.value.toLowerCase();
+        if (searchTerm) {
+            filtered = filtered.filter(session => 
+                session.user.username.toLowerCase().includes(searchTerm) ||
+                (session.user.full_name && session.user.full_name.toLowerCase().includes(searchTerm)) ||
+                session.ip_address.includes(searchTerm)
+            );
+        }
+        
+        // Filtro de rol
+        const selectedRole = roleFilter.value;
+        if (selectedRole) {
+            filtered = filtered.filter(session => session.user.role === selectedRole);
+        }
+        
+        // Filtro de dispositivo
+        const selectedDevice = deviceFilter.value;
+        if (selectedDevice) {
+            filtered = filtered.filter(session => 
+                session.device_info && session.device_info.toLowerCase().includes(selectedDevice.toLowerCase())
+            );
+        }
+        
+        renderSessions(filtered);
+    }
+    
+    searchInput.addEventListener('input', applyFilters);
+    roleFilter.addEventListener('change', applyFilters);
+    deviceFilter.addEventListener('change', applyFilters);
+}
+
+function refreshSessions() {
+    loadSessions();
+    showAlert('Sesiones actualizadas', 'info');
+}
+</script>
+{% endblock %}

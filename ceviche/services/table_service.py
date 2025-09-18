@@ -6,6 +6,35 @@ class TableService:
     """Servicio para gestión de mesas"""
     
     @staticmethod
+    def cleanup_expired_qr_sessions():
+        """
+        Limpiar mesas con sesiones QR expiradas
+        
+        Returns:
+            int: Número de mesas limpiadas
+        """
+        try:
+            # Buscar mesas con sesiones QR expiradas
+            expired_tables = Table.query.filter(
+                Table.status == 'temp_occupied',
+                Table.qr_expires_at < datetime.utcnow()
+            ).all()
+            
+            cleaned_count = 0
+            for table in expired_tables:
+                table.end_qr_session()
+                cleaned_count += 1
+            
+            if cleaned_count > 0:
+                db.session.commit()
+                
+            return cleaned_count
+            
+        except Exception as e:
+            db.session.rollback()
+            raise e
+    
+    @staticmethod
     def get_all_tables_by_location():
         """
         Obtener todas las mesas organizadas por piso y zona

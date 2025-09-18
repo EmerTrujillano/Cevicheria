@@ -7,6 +7,8 @@ from .permission import TemporaryPermission
 from .table import Floor, Zone, Table
 from .order import Order, OrderItem
 from .review import Review, Payment
+from .user_session import UserSession
 
 __all__ = ['User', 'Category', 'Product', 'Survey', 'TemporaryPermission', 
-           'Floor', 'Zone', 'Table', 'Order', 'OrderItem', 'Review', 'Payment']
+           'Floor', 'Zone', 'Table', 'Order', 'OrderItem', 'Review', 'Payment',
+           'UserSession']

@@ -1,685 +1,186 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel Administrador - Cevichería</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        .admin-header {
-            background: linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%);
-            color: white;
-            padding: 20px 0;
-        }
-        .sidebar {
-            min-height: 100vh;
-            background: #f8f9fa;
-            border-right: 1px solid #dee2e6;
-        }
-        .nav-pills .nav-link {
-            color: #495057;
-            border-radius: 10px;
-            margin-bottom: 5px;
-        }
-        .nav-pills .nav-link.active {
-            background: linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%);
-        }
-        .nav-pills .nav-link:hover {
-            background: #e9ecef;
-        }
-        .nav-pills .nav-link.active:hover {
-            background: linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%);
-        }
-        .stats-card {
-            background: white;
-            border-radius: 15px;
-            border: none;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            padding: 25px;
-            text-align: center;
-            transition: transform 0.2s;
-        }
-        .stats-card:hover {
-            transform: translateY(-5px);
-        }
-        .stats-icon {
-            font-size: 2.5rem;
-            margin-bottom: 15px;
-        }
-        .stats-number {
-            font-size: 2rem;
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-        .chart-card {
-            background: white;
-            border-radius: 15px;
-            border: none;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            padding: 20px;
-        }
-        .table-modern {
-            background: white;
-            border-radius: 15px;
-            overflow: hidden;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        }
-        .table-modern thead {
-            background: linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%);
-            color: white;
-        }
-        .badge-status {
-            padding: 8px 12px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-        }
-        .action-buttons .btn {
-            margin-right: 5px;
-            margin-bottom: 5px;
-        }
-        .section-content {
-            display: none;
-        }
-        .section-content.active {
-            display: block;
-        }
-        .quick-action {
-            background: white;
-            border-radius: 10px;
-            padding: 20px;
-            text-align: center;
-            border: 2px solid #dee2e6;
-            transition: all 0.3s;
-            cursor: pointer;
-            text-decoration: none;
-            color: inherit;
-        }
-        .quick-action:hover {
-            border-color: #6c5ce7;
-            color: #6c5ce7;
-            text-decoration: none;
-            transform: translateY(-2px);
-        }
-    </style>
-</head>
-<body class="bg-light">
-    <!-- Header -->
-    <div class="admin-header">
-        <div class="container-fluid">
-            <div class="row align-items-center">
-                <div class="col-md-6">
-                    <h2><i class="fas fa-crown"></i> Panel de Administración</h2>
-                    <p class="mb-0 opacity-75">Control total del restaurante</p>
+﻿{% extends "base.html" %}
+{% block title %}Admin - Cevichería{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <h1><i class="fas fa-tachometer-alt"></i> Panel Administrativo</h1>
+            <p class="text-muted">Gestión y supervisión del sistema de cevichería</p>
+        </div>
+    </div>
+
+    <!-- Accesos rápidos -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-users fa-3x text-primary mb-3"></i>
+                    <h5>Gestión de Usuarios</h5>
+                    <p class="text-muted">Crear, editar y administrar usuarios del sistema</p>
+                    <a href="/admin/user-management" class="btn btn-primary">
+                        <i class="fas fa-cog"></i> Gestionar
+                    </a>
                 </div>
-                <div class="col-md-6 text-end">
-                    <div class="d-flex align-items-center justify-content-end gap-3">
-                        <span class="badge bg-light text-dark px-3 py-2">
-                            <i class="fas fa-user"></i> {{ current_user.first_name }} {{ current_user.last_name }}
-                        </span>
-                        <span id="currentTime" class="h5 mb-0"></span>
-                        <a href="/auth/logout" class="btn btn-outline-light">
-                            <i class="fas fa-sign-out-alt"></i> Salir
-                        </a>
-                    </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-chart-line fa-3x text-warning mb-3"></i>
+                    <h5>Supervisión</h5>
+                    <p class="text-muted">Estado en tiempo real del local</p>
+                    <a href="/admin/supervision" class="btn btn-warning">
+                        <i class="fas fa-monitor"></i> Supervisar
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-utensils fa-3x text-info mb-3"></i>
+                    <h5>Gestión de Menú</h5>
+                    <p class="text-muted">Administrar productos y categorías</p>
+                    <a href="/admin/menu-management" class="btn btn-info">
+                        <i class="fas fa-edit"></i> Gestionar
+                    </a>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="container-fluid">
-        <div class="row">
-            <!-- Sidebar -->
-            <nav class="col-md-3 col-lg-2 sidebar p-3">
-                <ul class="nav nav-pills flex-column">
-                    <li class="nav-item">
-                        <a class="nav-link active" href="#" onclick="showSection('dashboard')">
-                            <i class="fas fa-tachometer-alt"></i> Dashboard
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#" onclick="showSection('orders')">
-                            <i class="fas fa-receipt"></i> Gestión de Órdenes
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#" onclick="showSection('menu')">
-                            <i class="fas fa-utensils"></i> Gestión de Menú
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#" onclick="showSection('tables')">
-                            <i class="fas fa-chair"></i> Gestión de Mesas
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#" onclick="showSection('users')">
-                            <i class="fas fa-users"></i> Gestión de Usuarios
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#" onclick="showSection('reports')">
-                            <i class="fas fa-chart-bar"></i> Reportes
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#" onclick="showSection('settings')">
-                            <i class="fas fa-cog"></i> Configuración
-                        </a>
-                    </li>
-                </ul>
-            </nav>
-
-            <!-- Main content -->
-            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4">
-                <!-- Dashboard Section -->
-                <div id="section-dashboard" class="section-content active">
-                    <!-- Estadísticas principales -->
-                    <div class="row mb-4">
-                        <div class="col-lg-3 col-md-6 mb-4">
-                            <div class="stats-card">
-                                <div class="stats-icon text-primary">
-                                    <i class="fas fa-coins"></i>
-                                </div>
-                                <div class="stats-number text-success" id="totalVentas">S/ 0.00</div>
-                                <div class="text-muted">Ventas del Día</div>
-                            </div>
-                        </div>
-                        <div class="col-lg-3 col-md-6 mb-4">
-                            <div class="stats-card">
-                                <div class="stats-icon text-warning">
-                                    <i class="fas fa-receipt"></i>
-                                </div>
-                                <div class="stats-number" id="totalOrdenes">0</div>
-                                <div class="text-muted">Órdenes del Día</div>
-                            </div>
-                        </div>
-                        <div class="col-lg-3 col-md-6 mb-4">
-                            <div class="stats-card">
-                                <div class="stats-icon text-info">
-                                    <i class="fas fa-chair"></i>
-                                </div>
-                                <div class="stats-number" id="mesasOcupadas">0</div>
-                                <div class="text-muted">Mesas Ocupadas</div>
-                            </div>
-                        </div>
-                        <div class="col-lg-3 col-md-6 mb-4">
-                            <div class="stats-card">
-                                <div class="stats-icon text-danger">
-                                    <i class="fas fa-users"></i>
-                                </div>
-                                <div class="stats-number" id="usuariosActivos">0</div>
-                                <div class="text-muted">Usuarios Activos</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Acciones rápidas -->
-                    <div class="row mb-4">
-                        <div class="col-12">
-                            <h4 class="mb-3">Acciones Rápidas</h4>
-                        </div>
-                        <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
-                            <div class="quick-action" onclick="showSection('orders')">
-                                <i class="fas fa-plus-circle fa-2x mb-2 text-primary"></i>
-                                <div>Nueva Orden</div>
-                            </div>
-                        </div>
-                        <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
-                            <div class="quick-action" onclick="showSection('menu')">
-                                <i class="fas fa-utensils fa-2x mb-2 text-success"></i>
-                                <div>Editar Menú</div>
-                            </div>
-                        </div>
-                        <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
-                            <div class="quick-action" onclick="showSection('tables')">
-                                <i class="fas fa-chair fa-2x mb-2 text-info"></i>
-                                <div>Gestionar Mesas</div>
-                            </div>
-                        </div>
-                        <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
-                            <div class="quick-action" onclick="showSection('users')">
-                                <i class="fas fa-user-plus fa-2x mb-2 text-warning"></i>
-                                <div>Nuevo Usuario</div>
-                            </div>
-                        </div>
-                        <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
-                            <div class="quick-action" onclick="showSection('reports')">
-                                <i class="fas fa-chart-line fa-2x mb-2 text-purple"></i>
-                                <div>Ver Reportes</div>
-                            </div>
-                        </div>
-                        <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
-                            <div class="quick-action" onclick="generateBackup()">
-                                <i class="fas fa-download fa-2x mb-2 text-secondary"></i>
-                                <div>Backup</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Gráficos y resumen -->
-                    <div class="row">
-                        <div class="col-lg-8 mb-4">
-                            <div class="chart-card">
-                                <h5 class="mb-3">Ventas de la Semana</h5>
-                                <canvas id="salesChart" height="300"></canvas>
-                            </div>
-                        </div>
-                        <div class="col-lg-4 mb-4">
-                            <div class="chart-card">
-                                <h5 class="mb-3">Órdenes por Estado</h5>
-                                <canvas id="ordersChart" height="300"></canvas>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Resumen de actividad reciente -->
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="table-modern">
-                                <div class="table-responsive">
-                                    <table class="table table-striped mb-0">
-                                        <thead>
-                                            <tr>
-                                                <th>Tiempo</th>
-                                                <th>Actividad</th>
-                                                <th>Usuario</th>
-                                                <th>Detalles</th>
-                                                <th>Estado</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="recentActivity">
-                                            <tr>
-                                                <td colspan="5" class="text-center py-4">
-                                                    <div class="spinner-border text-primary" role="status">
-                                                        <span class="visually-hidden">Cargando...</span>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-server"></i> Estado del Sistema</h5>
                 </div>
-
-                <!-- Gestión de Órdenes -->
-                <div id="section-orders" class="section-content">
-                    <div class="d-flex justify-content-between align-items-center mb-4">
-                        <h3>Gestión de Órdenes</h3>
-                        <div class="btn-group">
-                            <button class="btn btn-outline-primary" onclick="filterOrders('all')">Todas</button>
-                            <button class="btn btn-outline-warning" onclick="filterOrders('pending')">Pendientes</button>
-                            <button class="btn btn-outline-info" onclick="filterOrders('preparing')">En Preparación</button>
-                            <button class="btn btn-outline-success" onclick="filterOrders('ready')">Listas</button>
-                        </div>
-                    </div>
-                    
-                    <div id="ordersContainer">
-                        <div class="text-center py-5">
-                            <div class="spinner-border text-primary" role="status"></div>
-                            <p class="mt-2">Cargando órdenes...</p>
-                        </div>
-                    </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tbody id="estado-sistema">
+                            <!-- Estado dinámico -->
+                        </tbody>
+                    </table>
                 </div>
-
-                <!-- Gestión de Menú -->
-                <div id="section-menu" class="section-content">
-                    <div class="d-flex justify-content-between align-items-center mb-4">
-                        <h3>Gestión de Menú</h3>
-                        <button class="btn btn-primary" onclick="addNewProduct()">
-                            <i class="fas fa-plus"></i> Nuevo Producto
-                        </button>
-                    </div>
-                    
-                    <div id="menuContainer">
-                        <div class="text-center py-5">
-                            <div class="spinner-border text-primary" role="status"></div>
-                            <p class="mt-2">Cargando menú...</p>
-                        </div>
-                    </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">Actividad Reciente</div>
+                <div class="card-body">
+                    <div id="actividad-reciente"></div>
                 </div>
-
-                <!-- Gestión de Mesas -->
-                <div id="section-tables" class="section-content">
-                    <div class="d-flex justify-content-between align-items-center mb-4">
-                        <h3>Gestión de Mesas</h3>
-                        <button class="btn btn-primary" onclick="addNewTable()">
-                            <i class="fas fa-plus"></i> Nueva Mesa
-                        </button>
-                    </div>
-                    
-                    <div id="tablesContainer">
-                        <div class="text-center py-5">
-                            <div class="spinner-border text-primary" role="status"></div>
-                            <p class="mt-2">Cargando mesas...</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Gestión de Usuarios -->
-                <div id="section-users" class="section-content">
-                    <div class="d-flex justify-content-between align-items-center mb-4">
-                        <h3>Gestión de Usuarios</h3>
-                        <button class="btn btn-primary" onclick="addNewUser()">
-                            <i class="fas fa-user-plus"></i> Nuevo Usuario
-                        </button>
-                    </div>
-                    
-                    <div id="usersContainer">
-                        <div class="text-center py-5">
-                            <div class="spinner-border text-primary" role="status"></div>
-                            <p class="mt-2">Cargando usuarios...</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Reportes -->
-                <div id="section-reports" class="section-content">
-                    <h3 class="mb-4">Reportes y Análisis</h3>
-                    
-                    <div class="row">
-                        <div class="col-lg-6 mb-4">
-                            <div class="chart-card">
-                                <h5>Ventas Mensuales</h5>
-                                <canvas id="monthlyChart"></canvas>
-                            </div>
-                        </div>
-                        <div class="col-lg-6 mb-4">
-                            <div class="chart-card">
-                                <h5>Productos Más Vendidos</h5>
-                                <canvas id="productsChart"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Configuración -->
-                <div id="section-settings" class="section-content">
-                    <h3 class="mb-4">Configuración del Sistema</h3>
-                    
-                    <div class="row">
-                        <div class="col-lg-6">
-                            <div class="chart-card">
-                                <h5>Configuración General</h5>
-                                <form id="settingsForm">
-                                    <div class="mb-3">
-                                        <label class="form-label">Nombre del Restaurante</label>
-                                        <input type="text" class="form-control" value="Cevichería Peruana">
-                                    </div>
-                                    <div class="mb-3">
-                                        <label class="form-label">Tiempo QR (minutos)</label>
-                                        <input type="number" class="form-control" value="10">
-                                    </div>
-                                    <div class="mb-3">
-                                        <label class="form-label">Tiempo de Preparación Default (min)</label>
-                                        <input type="number" class="form-control" value="15">
-                                    </div>
-                                    <button type="submit" class="btn btn-primary">Guardar Cambios</button>
-                                </form>
-                            </div>
-                        </div>
-                        <div class="col-lg-6">
-                            <div class="chart-card">
-                                <h5>Mantenimiento</h5>
-                                <div class="d-grid gap-2">
-                                    <button class="btn btn-outline-warning" onclick="clearQRSessions()">
-                                        <i class="fas fa-qrcode"></i> Limpiar Sesiones QR
-                                    </button>
-                                    <button class="btn btn-outline-info" onclick="generateReports()">
-                                        <i class="fas fa-file-pdf"></i> Generar Reporte Diario
-                                    </button>
-                                    <button class="btn btn-outline-secondary" onclick="generateBackup()">
-                                        <i class="fas fa-download"></i> Crear Backup
-                                    </button>
-                                    <button class="btn btn-outline-danger" onclick="resetTables()">
-                                        <i class="fas fa-redo"></i> Resetear Todas las Mesas
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </main>
+            </div>
         </div>
     </div>
+</div>
+<script>
+// JavaScript para dashboard admin
+let statsInterval;
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script>
-        // Variables globales
-        let currentSection = 'dashboard';
-        
-        // Inicialización
-        document.addEventListener('DOMContentLoaded', function() {
-            updateTime();
-            setInterval(updateTime, 1000);
-            loadDashboardData();
-            setInterval(refreshDashboard, 30000); // Auto-refresh cada 30 segundos
+function updateStats() {
+    fetch('/admin/status')
+        .then(response => response.json())
+        .then(data => {
+            // Solo actualizar estado del sistema y actividad reciente
+            updateSystemStatus(data.sistema || {});
+            updateRecentActivity(data.actividad_reciente || []);
+        })
+        .catch(error => {
+            console.error('Error actualizando estadísticas:', error);
+            // Mostrar indicador de error temporal
+            showConnectionError();
         });
+}
+
+function animateStatUpdate(elementId, newValue) {
+    // Ya no se usa, pero mantengo por compatibilidad
+    const element = document.getElementById(elementId);
+    if (element && element.textContent !== newValue.toString()) {
+        element.style.transform = 'scale(1.1)';
+        element.style.color = '#28a745';
+        element.textContent = newValue;
         
-        // Actualizar hora
-        function updateTime() {
-            const now = new Date();
-            document.getElementById('currentTime').textContent = now.toLocaleTimeString();
+        setTimeout(() => {
+            element.style.transform = 'scale(1)';
+            element.style.color = '';
+        }, 300);
+    }
+}
+
+function updateSystemStatus(sistema) {
+    const container = document.getElementById('estado-sistema');
+    container.innerHTML = `
+        <tr>
+            <td><i class="fas fa-server"></i> Servidor</td>
+            <td><span class="badge bg-success">Activo</span></td>
+        </tr>
+        <tr>
+            <td><i class="fas fa-database"></i> Base de Datos</td>
+            <td><span class="badge bg-success">Conectada</span></td>
+        </tr>
+        <tr>
+            <td><i class="fas fa-users"></i> Sesiones Activas</td>
+            <td>${sistema.sesiones_activas || 0}</td>
+        </tr>
+        <tr>
+            <td><i class="fas fa-clock"></i> Tiempo Activo</td>
+            <td>${sistema.tiempo_activo || 'N/A'}</td>
+        </tr>
+    `;
+}
+
+function updateRecentActivity(actividades) {
+    const container = document.getElementById('actividad-reciente');
+    if (actividades.length === 0) {
+        container.innerHTML = '<p class="text-muted text-center">Sin actividad reciente</p>';
+        return;
+    }
+    
+    container.innerHTML = actividades.slice(0, 5).map(actividad => `
+        <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+            <div>
+                <small class="text-muted">${actividad.tipo}</small>
+                <p class="mb-0">${actividad.descripcion}</p>
+            </div>
+            <small class="text-muted">${actividad.tiempo}</small>
+        </div>
+    `).join('');
+}
+
+function showConnectionError() {
+    const errorElement = document.createElement('div');
+    errorElement.className = 'alert alert-warning alert-dismissible fade show position-fixed';
+    errorElement.style.cssText = 'top: 20px; right: 20px; z-index: 1055; max-width: 300px;';
+    errorElement.innerHTML = `
+        <i class="fas fa-exclamation-triangle"></i> 
+        Error de conexión. Reintentando...
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(errorElement);
+    
+    setTimeout(() => {
+        if (errorElement.parentNode) {
+            errorElement.remove();
         }
-        
-        // Mostrar sección
-        function showSection(sectionName) {
-            // Ocultar todas las secciones
-            document.querySelectorAll('.section-content').forEach(section => {
-                section.classList.remove('active');
-            });
-            
-            // Mostrar la sección seleccionada
-            document.getElementById(`section-${sectionName}`).classList.add('active');
-            
-            // Actualizar navegación
-            document.querySelectorAll('.nav-link').forEach(link => {
-                link.classList.remove('active');
-            });
-            event.target.classList.add('active');
-            
-            currentSection = sectionName;
-            
-            // Cargar datos específicos de la sección
-            loadSectionData(sectionName);
-        }
-        
-        // Cargar datos del dashboard
-        async function loadDashboardData() {
-            try {
-                const response = await fetch('/admin/dashboard-stats');
-                const data = await response.json();
-                
-                if (data.success) {
-                    const stats = data.data;
-                    document.getElementById('totalVentas').textContent = `S/ ${stats.ventas_dia || '0.00'}`;
-                    document.getElementById('totalOrdenes').textContent = stats.ordenes_dia || 0;
-                    document.getElementById('mesasOcupadas').textContent = stats.mesas_ocupadas || 0;
-                    document.getElementById('usuariosActivos').textContent = stats.usuarios_activos || 0;
-                    
-                    // Cargar actividad reciente
-                    loadRecentActivity();
-                }
-            } catch (error) {
-                console.error('Error cargando estadísticas:', error);
-            }
-        }
-        
-        // Cargar actividad reciente
-        async function loadRecentActivity() {
-            try {
-                const response = await fetch('/admin/recent-activity');
-                const data = await response.json();
-                
-                if (data.success) {
-                    renderRecentActivity(data.data);
-                }
-            } catch (error) {
-                console.error('Error cargando actividad:', error);
-            }
-        }
-        
-        // Renderizar actividad reciente
-        function renderRecentActivity(activities) {
-            const container = document.getElementById('recentActivity');
-            
-            if (activities.length === 0) {
-                container.innerHTML = `
-                    <tr>
-                        <td colspan="5" class="text-center py-4 text-muted">
-                            No hay actividad reciente
-                        </td>
-                    </tr>
-                `;
-                return;
-            }
-            
-            let html = '';
-            activities.forEach(activity => {
-                html += `
-                    <tr>
-                        <td>${new Date(activity.timestamp).toLocaleTimeString()}</td>
-                        <td>${activity.action}</td>
-                        <td>${activity.user_name}</td>
-                        <td>${activity.details}</td>
-                        <td>
-                            <span class="badge badge-status bg-${getStatusColor(activity.status)}">
-                                ${activity.status}
-                            </span>
-                        </td>
-                    </tr>
-                `;
-            });
-            
-            container.innerHTML = html;
-        }
-        
-        // Cargar datos específicos de sección
-        function loadSectionData(sectionName) {
-            switch(sectionName) {
-                case 'orders':
-                    loadOrders();
-                    break;
-                case 'menu':
-                    loadMenu();
-                    break;
-                case 'tables':
-                    loadTables();
-                    break;
-                case 'users':
-                    loadUsers();
-                    break;
-                case 'reports':
-                    loadReports();
-                    break;
-            }
-        }
-        
-        // Funciones de carga de datos (implementar según necesidades)
-        async function loadOrders() {
-            // Implementar carga de órdenes
-            document.getElementById('ordersContainer').innerHTML = `
-                <div class="alert alert-info">
-                    <i class="fas fa-info-circle"></i> 
-                    Funcionalidad en desarrollo. Aquí se mostrarán todas las órdenes del sistema.
-                </div>
-            `;
-        }
-        
-        async function loadMenu() {
-            document.getElementById('menuContainer').innerHTML = `
-                <div class="alert alert-info">
-                    <i class="fas fa-info-circle"></i> 
-                    Funcionalidad en desarrollo. Aquí se gestionará el menú del restaurante.
-                </div>
-            `;
-        }
-        
-        async function loadTables() {
-            document.getElementById('tablesContainer').innerHTML = `
-                <div class="alert alert-info">
-                    <i class="fas fa-info-circle"></i> 
-                    Funcionalidad en desarrollo. Aquí se gestionarán las mesas del restaurante.
-                </div>
-            `;
-        }
-        
-        async function loadUsers() {
-            document.getElementById('usersContainer').innerHTML = `
-                <div class="alert alert-info">
-                    <i class="fas fa-info-circle"></i> 
-                    Funcionalidad en desarrollo. Aquí se gestionarán los usuarios del sistema.
-                </div>
-            `;
-        }
-        
-        async function loadReports() {
-            // Implementar gráficos y reportes
-            console.log('Cargando reportes...');
-        }
-        
-        // Funciones auxiliares
-        function getStatusColor(status) {
-            const colors = {
-                'success': 'success',
-                'completed': 'success',
-                'pending': 'warning',
-                'error': 'danger',
-                'cancelled': 'danger',
-                'processing': 'info'
-            };
-            return colors[status] || 'secondary';
-        }
-        
-        // Acciones rápidas
-        function addNewProduct() {
-            alert('Funcionalidad en desarrollo: Agregar nuevo producto');
-        }
-        
-        function addNewTable() {
-            alert('Funcionalidad en desarrollo: Agregar nueva mesa');
-        }
-        
-        function addNewUser() {
-            alert('Funcionalidad en desarrollo: Agregar nuevo usuario');
-        }
-        
-        function generateBackup() {
-            if (confirm('¿Generar backup de la base de datos?')) {
-                alert('Funcionalidad en desarrollo: Generar backup');
-            }
-        }
-        
-        function clearQRSessions() {
-            if (confirm('¿Limpiar todas las sesiones QR activas?')) {
-                alert('Funcionalidad en desarrollo: Limpiar sesiones QR');
-            }
-        }
-        
-        function generateReports() {
-            alert('Funcionalidad en desarrollo: Generar reportes');
-        }
-        
-        function resetTables() {
-            if (confirm('¿Resetear todas las mesas a estado libre?')) {
-                alert('Funcionalidad en desarrollo: Reset de mesas');
-            }
-        }
-        
-        // Filtros
-        function filterOrders(status) {
-            console.log('Filtrar órdenes por:', status);
-        }
-        
-        // Refresh dashboard
-        function refreshDashboard() {
-            if (currentSection === 'dashboard') {
-                loadDashboardData();
-            }
-        }
-    </script>
-</body>
-</html>
+    }, 3000);
+}
+
+// Inicializar dashboard
+document.addEventListener('DOMContentLoaded', function() {
+    // Cargar estadísticas inmediatamente
+    updateStats();
+    
+    // Actualizar cada 5 segundos
+    statsInterval = setInterval(updateStats, 5000);
+});
+
+// Limpiar interval al salir
+window.addEventListener('beforeunload', function() {
+    if (statsInterval) {
+        clearInterval(statsInterval);
+    }
+});
+</script>
+{% endblock %}

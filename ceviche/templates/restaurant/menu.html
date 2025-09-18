@@ -1,0 +1,355 @@
+{% extends "base.html" %}
+{% block title %}Menú - Mesa {{ table_number }}{% endblock %}
+{% block content %}
+<style>
+.product-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border: none;
+    border-radius: 12px;
+}
+
+.product-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15) !important;
+}
+
+.price-badge {
+    font-size: 1.1rem;
+    font-weight: bold;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.ingredients-section {
+    background: #f8f9fa;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border-left: 3px solid #28a745;
+}
+
+.badge {
+    font-size: 0.8rem;
+    padding: 5px 8px;
+}
+
+.badge.bg-warning {
+    color: #212529 !important;
+}
+
+.card-title {
+    color: #2c3e50 !important;
+}
+</style>
+
+<div class="container py-4">
+    <div class="row">
+        <div class="col-lg-8 col-md-12">
+            <h1 class="mb-4">
+                <i class="fas fa-utensils text-primary"></i> 
+                Menú - Mesa {{ table_number }}
+            </h1>
+            <div class="alert alert-info rounded-3">
+                <i class="fas fa-clock"></i>
+                Tiempo restante: <span id="time-remaining">Cargando...</span>
+                <button class="btn btn-sm btn-outline-primary ms-2" onclick="extendSession()">
+                    <i class="fas fa-plus-circle"></i> Extender tiempo
+                </button>
+            </div>
+            
+            <div class="row" id="menu-items">
+                <!-- Los productos se cargarán dinámicamente -->
+            </div>
+        </div>
+        
+        <div class="col-lg-4 col-md-12">
+            <div class="card sticky-top shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-shopping-cart"></i> Tu Pedido</h5>
+                </div>
+                <div class="card-body">
+                    <div id="order-items">
+                        <p class="text-muted text-center">
+                            <i class="fas fa-cart-plus fa-2x mb-2 d-block"></i>
+                            Tu carrito está vacío
+                        </p>
+                    </div>
+                    <hr>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <strong class="fs-5">Total: S/. <span id="total-amount">0.00</span></strong>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <button class="btn btn-success btn-lg w-100" onclick="submitOrder()" disabled id="submit-btn">
+                        <i class="fas fa-paper-plane"></i> Enviar Pedido
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let cart = [];
+let tableNumber = {{ table_number }};
+let sessionActive = true;
+
+// Cargar menú
+function loadMenu() {
+    fetch('/menu/products')
+        .then(response => response.json())
+        .then(data => {
+            const container = document.getElementById('menu-items');
+            container.innerHTML = '';
+            
+            if (data.success) {
+                data.data.forEach(category => {
+                    // Agregar título de categoría
+                    container.innerHTML += `
+                        <div class="col-12 mb-3">
+                            <h3 class="text-primary border-bottom pb-2">
+                                <i class="fas fa-utensils"></i> ${category.category ? category.category.name : 'Sin categoría'}
+                            </h3>
+                        </div>
+                    `;
+                    
+                    category.products.forEach(item => {
+                        console.log('Item:', item); // Debug
+                        console.log('Tags:', item.tags); // Debug
+                        console.log('Ingredients:', item.ingredients); // Debug
+                        
+                        const tags = renderTags(item.tags || []);
+                        const ingredients = renderIngredients(item.ingredients || []);
+                        
+                        container.innerHTML += `
+                            <div class="col-lg-6 col-md-12 mb-4">
+                                <div class="card h-100 shadow-sm product-card">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <h5 class="card-title text-dark fw-bold">${item.name}</h5>
+                                            <span class="price-badge bg-success text-white px-3 py-1 rounded-pill">
+                                                S/. ${item.price}
+                                            </span>
+                                        </div>
+                                        
+                                        ${tags}
+                                        
+                                        <p class="card-text text-muted mb-2">${item.description || 'Delicioso plato preparado con ingredientes frescos'}</p>
+                                        
+                                        ${ingredients}
+                                        
+                                        <div class="d-flex justify-content-between align-items-center mt-3">
+                                            <small class="text-muted">
+                                                <i class="fas fa-clock"></i> ${item.preparation_time || 15} min
+                                            </small>
+                                            <button class="btn btn-primary btn-sm px-4" onclick="addToCart(${item.id}, '${item.name}', ${item.price})">
+                                                <i class="fas fa-plus"></i> Agregar
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                });
+            }
+        })
+        .catch(error => console.error('Error:', error));
+}
+
+// Renderizar etiquetas con íconos llamativos
+function renderTags(tags) {
+    if (!tags || tags.length === 0) return '';
+    
+    const tagIcons = {
+        'recomendado': '⭐ Recomendado',
+        'picante': '🌶️ Picante',
+        'mas_vendido': '🏆 Más vendido',
+        'nuevo': '🆕 Nuevo',
+        'vegetariano': '🥬 Vegetariano',
+        'sin_gluten': '🌾 Sin Gluten',
+        'especial': '✨ Especial'
+    };
+    
+    let tagsHtml = '<div class="mb-2">';
+    tags.forEach(tag => {
+        const tagText = tagIcons[tag.trim()] || `🔸 ${tag}`;
+        tagsHtml += `<span class="badge bg-warning text-dark me-1 mb-1">${tagText}</span>`;
+    });
+    tagsHtml += '</div>';
+    
+    return tagsHtml;
+}
+
+// Renderizar ingredientes
+function renderIngredients(ingredients) {
+    if (!ingredients || ingredients.length === 0) return '';
+    
+    // Eliminar duplicados y limpiar
+    const uniqueIngredients = [...new Set(ingredients.map(ing => ing.trim()).filter(ing => ing.length > 0))];
+    
+    if (uniqueIngredients.length === 0) return '';
+    
+    return `
+        <div class="ingredients-section mt-2">
+            <small class="text-muted fw-bold">Ingredientes:</small>
+            <small class="d-block text-secondary">${uniqueIngredients.join(', ')}</small>
+        </div>
+    `;
+}
+
+// Agregar al carrito
+function addToCart(id, name, price) {
+    const existingItem = cart.find(item => item.id === id);
+    
+    if (existingItem) {
+        existingItem.quantity += 1;
+    } else {
+        cart.push({
+            id: id,
+            name: name,
+            price: price,
+            quantity: 1
+        });
+    }
+    
+    updateCartDisplay();
+}
+
+// Actualizar visualización del carrito
+function updateCartDisplay() {
+    const container = document.getElementById('order-items');
+    const totalElement = document.getElementById('total-amount');
+    const submitBtn = document.getElementById('submit-btn');
+    
+    if (cart.length === 0) {
+        container.innerHTML = `
+            <p class="text-muted text-center">
+                <i class="fas fa-cart-plus fa-2x mb-2 d-block"></i>
+                Tu carrito está vacío
+            </p>
+        `;
+        totalElement.textContent = '0.00';
+        submitBtn.disabled = true;
+        return;
+    }
+    
+    let html = '';
+    let total = 0;
+    
+    cart.forEach(item => {
+        const subtotal = item.price * item.quantity;
+        total += subtotal;
+        
+        html += `
+            <div class="cart-item p-2 mb-2 bg-light rounded">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="flex-grow-1">
+                        <small class="fw-bold d-block">${item.name}</small>
+                        <small class="text-muted">S/. ${item.price} x ${item.quantity}</small>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <button class="btn btn-sm btn-outline-danger" onclick="removeFromCart(${item.id})">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="text-end">
+                    <small class="fw-bold text-success">S/. ${subtotal.toFixed(2)}</small>
+                </div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+    totalElement.textContent = total.toFixed(2);
+    submitBtn.disabled = false;
+}
+
+// Remover del carrito
+function removeFromCart(id) {
+    const itemIndex = cart.findIndex(item => item.id === id);
+    if (itemIndex > -1) {
+        if (cart[itemIndex].quantity > 1) {
+            cart[itemIndex].quantity -= 1;
+        } else {
+            cart.splice(itemIndex, 1);
+        }
+    }
+    updateCartDisplay();
+}
+
+// Enviar pedido
+function submitOrder() {
+    if (cart.length === 0) return;
+    
+    fetch('/mozo/orders', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            table_number: tableNumber,
+            items: cart
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('¡Pedido enviado exitosamente!');
+            cart = [];
+            updateCartDisplay();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error al enviar pedido');
+    });
+}
+
+// Extender sesión
+function extendSession() {
+    fetch(`/restaurant/api/table/${tableNumber}/extend`, {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Sesión extendida por 10 minutos más');
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+// Verificar estado de sesión
+function checkSessionStatus() {
+    fetch(`/restaurant/api/table/${tableNumber}/status`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const timeRemaining = data.time_remaining;
+                document.getElementById('time-remaining').textContent = 
+                    timeRemaining > 0 ? `${Math.floor(timeRemaining / 60)}:${(timeRemaining % 60).toString().padStart(2, '0')}` : 'Expirado';
+                
+                if (timeRemaining <= 0) {
+                    sessionActive = false;
+                    alert('Tu sesión ha expirado. Serás redirigido.');
+                    window.location.href = '/restaurant/';
+                }
+            }
+        })
+        .catch(error => console.error('Error:', error));
+}
+
+// Inicializar
+document.addEventListener('DOMContentLoaded', function() {
+    loadMenu();
+    checkSessionStatus();
+    
+    // Verificar estado cada 30 segundos
+    setInterval(checkSessionStatus, 30000);
+});
+</script>
+{% endblock %}

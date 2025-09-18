@@ -1,603 +1,683 @@
-from flask import Blueprint, request, jsonify, render_template
+from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from utils.decorators import role_required
-from models import (Floor, Zone, Table, Product, Category, Order, OrderItem, 
-                   Payment, User, Review)
+from models import User, Product, Category, Table, Order, OrderItem, UserSession
 from config.extensions import db
-from datetime import datetime, date
-from sqlalchemy import func, and_, or_
-import uuid
+from utils.decorators import role_required
+from services.session_service import SessionService
+from datetime import datetime
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
-@admin_bp.route('/dashboard')
-@jwt_required()
-@role_required(['admin'])
-def dashboard():
-    """Dashboard principal para administradores"""
+def check_admin_auth():
+    """Verificar autenticación de admin usando sesión"""
+    if 'user_id' not in session:
+        return False
+    
+    user = User.query.get(session['user_id'])
+    if not user or user.role != 'admin':
+        return False
+    
+    return True
+
+@admin_bp.route('/')
+def admin_dashboard():
+    """Panel principal del administrador"""
+    if not check_admin_auth():
+        return redirect(url_for('main.login_page'))
     return render_template('admin/dashboard.html')
 
-# === GESTIÓN DE ESTRUCTURA DEL LOCAL ===
+@admin_bp.route('/supervision')
+def supervision():
+    """Vista de supervisión en tiempo real"""
+    if not check_admin_auth():
+        return redirect(url_for('main.login_page'))
+    return render_template('admin/supervision.html')
 
-@admin_bp.route('/floors', methods=['GET', 'POST'])
-@jwt_required()
-@role_required(['admin'])
-def manage_floors():
-    """Gestionar pisos del local"""
-    if request.method == 'GET':
-        floors = Floor.query.all()
-        floors_data = []
-        
-        for floor in floors:
-            floor_data = floor.to_dict()
-            floor_data['zones'] = [zone.to_dict() for zone in floor.zones]
-            floors_data.append(floor_data)
-        
-        return jsonify({
-            'success': True,
-            'data': floors_data
-        })
+@admin_bp.route('/menu-management')
+def menu_management():
+    """Gestión del menú - productos y categorías"""
+    if not check_admin_auth():
+        return redirect(url_for('main.login_page'))
+    return render_template('admin/menu_management.html')
+
+@admin_bp.route('/api/real-time-status')
+def get_real_time_status():
+    """Obtener estado en tiempo real del local"""
+    if not check_admin_auth():
+        return jsonify({'success': False, 'message': 'No autorizado'}), 401
     
-    elif request.method == 'POST':
-        try:
-            data = request.get_json()
-            
-            floor = Floor(
-                name=data['name'],
-                description=data.get('description', '')
-            )
-            
-            db.session.add(floor)
-            db.session.commit()
-            
-            return jsonify({
-                'success': True,
-                'message': 'Piso creado correctamente',
-                'data': floor.to_dict()
-            })
-        
-        except Exception as e:
-            db.session.rollback()
-            return jsonify({
-                'success': False,
-                'message': f'Error al crear piso: {str(e)}'
-            }), 500
-
-@admin_bp.route('/zones', methods=['GET', 'POST'])
-@jwt_required()
-@role_required(['admin'])
-def manage_zones():
-    """Gestionar zonas del local"""
-    if request.method == 'GET':
-        zones = Zone.query.all()
-        return jsonify({
-            'success': True,
-            'data': [zone.to_dict() for zone in zones]
-        })
-    
-    elif request.method == 'POST':
-        try:
-            data = request.get_json()
-            
-            zone = Zone(
-                name=data['name'],
-                description=data.get('description', ''),
-                floor_id=data['floor_id'],
-                zone_type=data.get('zone_type', 'dining')
-            )
-            
-            db.session.add(zone)
-            db.session.commit()
-            
-            return jsonify({
-                'success': True,
-                'message': 'Zona creada correctamente',
-                'data': zone.to_dict()
-            })
-        
-        except Exception as e:
-            db.session.rollback()
-            return jsonify({
-                'success': False,
-                'message': f'Error al crear zona: {str(e)}'
-            }), 500
-
-@admin_bp.route('/tables', methods=['GET', 'POST'])
-@jwt_required()
-@role_required(['admin'])
-def manage_tables():
-    """Gestionar mesas del local"""
-    if request.method == 'GET':
-        tables = Table.query.all()
-        return jsonify({
-            'success': True,
-            'data': [table.to_dict() for table in tables]
-        })
-    
-    elif request.method == 'POST':
-        try:
-            data = request.get_json()
-            
-            # Generar código QR único
-            qr_code = f"/menu/qr/{data['number']}"
-            
-            table = Table(
-                number=data['number'],
-                capacity=data.get('capacity', 4),
-                zone_id=data['zone_id'],
-                qr_code=qr_code
-            )
-            
-            db.session.add(table)
-            db.session.commit()
-            
-            return jsonify({
-                'success': True,
-                'message': 'Mesa creada correctamente',
-                'data': table.to_dict()
-            })
-        
-        except Exception as e:
-            db.session.rollback()
-            return jsonify({
-                'success': False,
-                'message': f'Error al crear mesa: {str(e)}'
-            }), 500
-
-# === GESTIÓN DE PRODUCTOS Y MENÚ ===
-
-@admin_bp.route('/products/<int:product_id>/availability', methods=['PATCH'])
-@jwt_required()
-@role_required(['admin'])
-def toggle_product_availability(product_id):
-    """Marcar producto como disponible/agotado"""
     try:
-        product = Product.query.get_or_404(product_id)
-        product.is_available = not product.is_available
+        # Estado de mesas con detalles
+        mesas_ocupadas = 0
+        mesas_disponibles = 0
+        mesas_detalle = []
         
-        db.session.commit()
+        try:
+            todas_las_mesas = Table.query.all()
+            for mesa in todas_las_mesas:
+                if mesa.status == 'occupied':
+                    mesas_ocupadas += 1
+                else:
+                    mesas_disponibles += 1
+                
+                # Calcular tiempo ocupado
+                tiempo_ocupada = None
+                tiempo_str = "-"
+                if mesa.status == 'occupied' and hasattr(mesa, 'occupied_at') and mesa.occupied_at:
+                    try:
+                        tiempo_ocupada = (datetime.utcnow() - mesa.occupied_at).total_seconds()
+                        if tiempo_ocupada > 3600:  # Más de 1 hora
+                            horas = int(tiempo_ocupada // 3600)
+                            minutos = int((tiempo_ocupada % 3600) // 60)
+                            tiempo_str = f"{horas}h {minutos}m"
+                        else:
+                            tiempo_str = f"{int(tiempo_ocupada // 60)}m"
+                    except:
+                        tiempo_str = "N/A"
+                
+                # Obtener zona de forma segura
+                zona = "General"
+                try:
+                    if hasattr(mesa, 'zone') and mesa.zone:
+                        zona = mesa.zone.name
+                except:
+                    zona = "General"
+                
+                mesas_detalle.append({
+                    'numero': mesa.number,
+                    'estado': mesa.status,
+                    'zona': zona,
+                    'tiempo_ocupada': tiempo_str,
+                    'tiempo_segundos': int(tiempo_ocupada) if tiempo_ocupada else 0
+                })
+        except Exception as e:
+            print(f"Error en mesas: {e}")
+            # Datos por defecto si hay problema con las mesas
+            mesas_detalle = []
         
-        status = 'disponible' if product.is_available else 'agotado'
+        # Usuarios activos
+        usuarios_activos = 0
+        usuarios_por_rol = {'admin': 0, 'mozo': 0, 'cocina': 0, 'cajero': 0}
+        
+        try:
+            usuarios_activos = UserSession.query.filter_by(is_active=True).count()
+            
+            # Usuarios por rol
+            active_sessions = UserSession.query.filter_by(is_active=True).join(User).all()
+            for session in active_sessions:
+                role = session.user.role
+                if role in usuarios_por_rol:
+                    usuarios_por_rol[role] += 1
+        except Exception as e:
+            print(f"Error en usuarios: {e}")
+        
+        # Pedidos pendientes
+        pedidos_pendientes = 0
+        try:
+            pedidos_pendientes = Order.query.filter(
+                Order.status.in_(['pending', 'in_progress'])
+            ).count()
+        except Exception as e:
+            print(f"Error en pedidos: {e}")
+        
+        # Ventas del día
+        ventas_dia = 0.0
+        try:
+            from datetime import date
+            today = date.today()
+            pedidos_hoy = Order.query.filter(
+                db.func.date(Order.created_at) == today,
+                Order.status == 'completed'
+            ).all()
+            
+            ventas_dia = sum(order.total_amount for order in pedidos_hoy if order.total_amount)
+        except Exception as e:
+            print(f"Error en ventas: {e}")
+        
         return jsonify({
             'success': True,
-            'message': f'Producto marcado como {status}',
-            'data': product.to_dict()
+            'usuarios_activos': usuarios_activos,
+            'mesas_ocupadas': mesas_ocupadas,
+            'pedidos_pendientes': pedidos_pendientes,
+            'ventas_dia': float(ventas_dia),
+            'usuarios_por_rol': usuarios_por_rol,
+            'mesas_detalle': mesas_detalle,
+            'timestamp': datetime.utcnow().isoformat()
         })
-    
+        
     except Exception as e:
-        db.session.rollback()
+        print(f"Error general en real-time-status: {e}")
         return jsonify({
             'success': False,
-            'message': f'Error al actualizar disponibilidad: {str(e)}'
+            'message': f'Error al obtener estado: {str(e)}'
         }), 500
 
-@admin_bp.route('/products/<int:product_id>', methods=['PUT'])
+@admin_bp.route('/user-management')
+def user_management():
+    """Gestión de usuarios"""
+    if not check_admin_auth():
+        return redirect(url_for('main.login_page'))
+    return render_template('admin/user_management.html')
+
+@admin_bp.route('/session-monitoring')
+def session_monitoring():
+    """Monitoreo de sesiones activas"""
+    if not check_admin_auth():
+        return redirect(url_for('main.login_page'))
+    return render_template('admin/session_monitoring.html')
+
+# APIs para gestión de usuarios
+@admin_bp.route('/api/users', methods=['GET'])
 @jwt_required()
-@role_required(['admin'])
-def update_product(product_id):
-    """Actualizar información de un producto"""
+@role_required('admin')
+def get_users():
+    """Obtener lista de todos los usuarios"""
     try:
-        product = Product.query.get_or_404(product_id)
+        users = User.query.all()
+        users_data = []
+        
+        for user in users:
+            # Obtener sesiones activas del usuario
+            active_sessions = UserSession.query.filter_by(user_id=user.id, is_active=True).count()
+            
+            user_data = user.to_dict()
+            user_data['active_sessions'] = active_sessions
+            user_data['last_login'] = user.last_login.isoformat() if user.last_login else None
+            users_data.append(user_data)
+        
+        return jsonify({
+            'success': True,
+            'data': users_data
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error al obtener usuarios: {str(e)}'
+        }), 500
+
+@admin_bp.route('/api/users', methods=['POST'])
+@jwt_required()
+@role_required('admin')
+def create_user():
+    """Crear nuevo usuario"""
+    try:
         data = request.get_json()
         
-        # Actualizar campos permitidos
-        allowed_fields = ['name', 'description', 'price', 'ingredients', 'tags', 
-                         'image_url', 'image_gallery', 'station_type', 
-                         'preparation_time', 'spice_level', 'category_id']
+        required_fields = ['username', 'password', 'role', 'full_name']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({
+                    'success': False,
+                    'message': f'Campo requerido: {field}'
+                }), 400
         
-        for field in allowed_fields:
-            if field in data:
-                setattr(product, field, data[field])
+        # Verificar que el username no exista
+        if User.query.filter_by(username=data['username']).first():
+            return jsonify({
+                'success': False,
+                'message': 'El nombre de usuario ya existe'
+            }), 400
         
-        product.last_updated = datetime.utcnow()
+        # Crear usuario
+        user = User(
+            username=data['username'],
+            full_name=data['full_name'],
+            role=data['role'],
+            estacion=data.get('estacion')  # Solo para cocina
+        )
+        user.set_password(data['password'])
+        
+        db.session.add(user)
         db.session.commit()
         
         return jsonify({
             'success': True,
-            'message': 'Producto actualizado correctamente',
-            'data': product.to_dict()
-        })
-    
+            'message': 'Usuario creado exitosamente',
+            'data': user.to_dict()
+        }), 201
+        
     except Exception as e:
         db.session.rollback()
         return jsonify({
             'success': False,
-            'message': f'Error al actualizar producto: {str(e)}'
+            'message': f'Error al crear usuario: {str(e)}'
         }), 500
 
-# === MONITOREO EN TIEMPO REAL ===
-
-@admin_bp.route('/monitor/tables')
+@admin_bp.route('/api/users/<int:user_id>', methods=['PUT'])
 @jwt_required()
-@role_required(['admin'])
-def monitor_tables():
-    """Monitor del estado de todas las mesas"""
-    try:
-        floors = Floor.query.all()
-        monitor_data = []
-        
-        for floor in floors:
-            floor_data = {
-                'floor': floor.to_dict(),
-                'zones': []
-            }
-            
-            for zone in floor.zones:
-                zone_data = {
-                    'zone': zone.to_dict(),
-                    'tables': []
-                }
-                
-                for table in zone.tables:
-                    table_data = table.to_dict()
-                    
-                    # Agregar información de la orden actual si existe
-                    current_order = Order.query.filter_by(
-                        table_id=table.id
-                    ).filter(
-                        Order.status.in_(['pending', 'in_kitchen', 'ready', 'served'])
-                    ).first()
-                    
-                    if current_order:
-                        table_data['current_order'] = {
-                            'order_number': current_order.order_number,
-                            'status': current_order.status,
-                            'waiter_name': current_order.waiter.username if current_order.waiter else '',
-                            'total_amount': float(current_order.total_amount),
-                            'created_at': current_order.created_at.isoformat()
-                        }
-                    else:
-                        table_data['current_order'] = None
-                    
-                    zone_data['tables'].append(table_data)
-                
-                floor_data['zones'].append(zone_data)
-            
-            monitor_data.append(floor_data)
-        
-        return jsonify({
-            'success': True,
-            'data': monitor_data
-        })
-    
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'message': f'Error al obtener monitor de mesas: {str(e)}'
-        }), 500
-
-@admin_bp.route('/monitor/orders')
-@jwt_required()
-@role_required(['admin'])
-def monitor_orders():
-    """Monitor de todas las órdenes activas"""
-    try:
-        active_orders = Order.query.filter(
-            Order.status.in_(['pending', 'in_kitchen', 'ready', 'served'])
-        ).order_by(Order.created_at.desc()).all()
-        
-        orders_data = []
-        for order in active_orders:
-            order_data = order.to_dict()
-            order_data['items'] = [item.to_dict() for item in order.order_items]
-            orders_data.append(order_data)
-        
-        return jsonify({
-            'success': True,
-            'data': orders_data
-        })
-    
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'message': f'Error al obtener monitor de órdenes: {str(e)}'
-        }), 500
-
-# === REPORTES Y ESTADÍSTICAS ===
-
-@admin_bp.route('/reports/sales')
-@jwt_required()
-@role_required(['admin'])
-def sales_report():
-    """Reporte de ventas"""
-    try:
-        date_from = request.args.get('date_from')
-        date_to = request.args.get('date_to')
-        
-        # Por defecto, ventas del día actual
-        if not date_from:
-            date_from = date.today()
-        else:
-            date_from = datetime.strptime(date_from, '%Y-%m-%d').date()
-        
-        if not date_to:
-            date_to = date_from
-        else:
-            date_to = datetime.strptime(date_to, '%Y-%m-%d').date()
-        
-        # Ventas totales por día
-        daily_sales = db.session.query(
-            func.date(Payment.created_at).label('date'),
-            func.sum(Payment.amount).label('total'),
-            func.count(Payment.id).label('orders_count')
-        ).filter(
-            and_(
-                func.date(Payment.created_at) >= date_from,
-                func.date(Payment.created_at) <= date_to
-            )
-        ).group_by(func.date(Payment.created_at)).all()
-        
-        # Ventas por método de pago
-        payment_methods = db.session.query(
-            Payment.payment_method,
-            func.sum(Payment.amount).label('total'),
-            func.count(Payment.id).label('count')
-        ).filter(
-            and_(
-                func.date(Payment.created_at) >= date_from,
-                func.date(Payment.created_at) <= date_to
-            )
-        ).group_by(Payment.payment_method).all()
-        
-        # Productos más vendidos
-        top_products = db.session.query(
-            Product.name,
-            func.sum(OrderItem.quantity).label('quantity_sold'),
-            func.sum(OrderItem.total_price).label('revenue')
-        ).join(OrderItem).join(Order).join(Payment).filter(
-            and_(
-                func.date(Payment.created_at) >= date_from,
-                func.date(Payment.created_at) <= date_to,
-                OrderItem.status != 'cancelled'
-            )
-        ).group_by(Product.id, Product.name).order_by(
-            func.sum(OrderItem.quantity).desc()
-        ).limit(10).all()
-        
-        # Ventas por mozo
-        waiter_sales = db.session.query(
-            User.username,
-            func.sum(Payment.amount).label('total'),
-            func.count(Payment.id).label('orders_count')
-        ).join(Order, Order.waiter_id == User.id).join(Payment).filter(
-            and_(
-                func.date(Payment.created_at) >= date_from,
-                func.date(Payment.created_at) <= date_to
-            )
-        ).group_by(User.id, User.username).order_by(
-            func.sum(Payment.amount).desc()
-        ).all()
-        
-        report_data = {
-            'period': {
-                'from': date_from.isoformat(),
-                'to': date_to.isoformat()
-            },
-            'daily_sales': [
-                {
-                    'date': sale.date.isoformat(),
-                    'total': float(sale.total),
-                    'orders_count': sale.orders_count
-                }
-                for sale in daily_sales
-            ],
-            'payment_methods': [
-                {
-                    'method': method.payment_method,
-                    'total': float(method.total),
-                    'count': method.count
-                }
-                for method in payment_methods
-            ],
-            'top_products': [
-                {
-                    'name': product.name,
-                    'quantity_sold': product.quantity_sold,
-                    'revenue': float(product.revenue)
-                }
-                for product in top_products
-            ],
-            'waiter_sales': [
-                {
-                    'waiter': waiter.username,
-                    'total': float(waiter.total),
-                    'orders_count': waiter.orders_count
-                }
-                for waiter in waiter_sales
-            ]
-        }
-        
-        return jsonify({
-            'success': True,
-            'data': report_data
-        })
-    
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'message': f'Error al generar reporte: {str(e)}'
-        }), 500
-
-# === GESTIÓN DE USUARIOS ===
-
-@admin_bp.route('/users', methods=['GET', 'POST'])
-@jwt_required()
-@role_required(['admin'])
-def manage_users():
-    """Gestionar usuarios del sistema"""
-    if request.method == 'GET':
-        users = User.query.filter(User.role != 'admin').all()
-        return jsonify({
-            'success': True,
-            'data': [user.to_dict() for user in users]
-        })
-    
-    elif request.method == 'POST':
-        try:
-            data = request.get_json()
-            
-            # Verificar que el username no exista
-            if User.query.filter_by(username=data['username']).first():
-                return jsonify({
-                    'success': False,
-                    'message': 'El nombre de usuario ya existe'
-                }), 400
-            
-            user = User(
-                username=data['username'],
-                password=data['password'],  # En producción, hashear la contraseña
-                role=data['role']
-            )
-            
-            db.session.add(user)
-            db.session.commit()
-            
-            return jsonify({
-                'success': True,
-                'message': 'Usuario creado correctamente',
-                'data': user.to_dict()
-            })
-        
-        except Exception as e:
-            db.session.rollback()
-            return jsonify({
-                'success': False,
-                'message': f'Error al crear usuario: {str(e)}'
-            }), 500
-
-@admin_bp.route('/users/<int:user_id>/role', methods=['PATCH'])
-@jwt_required()
-@role_required(['admin'])
-def update_user_role(user_id):
-    """Actualizar el rol de un usuario"""
+@role_required('admin')
+def update_user(user_id):
+    """Actualizar usuario"""
     try:
         user = User.query.get_or_404(user_id)
         data = request.get_json()
         
-        # No permitir cambiar el rol de administradores
-        if user.role == 'admin':
-            return jsonify({
-                'success': False,
-                'message': 'No se puede cambiar el rol de un administrador'
-            }), 400
+        # Actualizar campos permitidos
+        if 'full_name' in data:
+            user.full_name = data['full_name']
+        if 'role' in data:
+            user.role = data['role']
+        if 'estacion' in data:
+            user.estacion = data['estacion']
+        if 'password' in data and data['password']:
+            user.set_password(data['password'])
         
-        user.role = data['role']
         db.session.commit()
         
         return jsonify({
             'success': True,
-            'message': 'Rol actualizado correctamente',
+            'message': 'Usuario actualizado exitosamente',
             'data': user.to_dict()
         })
-    
+        
     except Exception as e:
         db.session.rollback()
         return jsonify({
             'success': False,
-            'message': f'Error al actualizar rol: {str(e)}'
+            'message': f'Error al actualizar usuario: {str(e)}'
         }), 500
 
-# === GESTIÓN DE SESIONES QR ===
-
-@admin_bp.route('/qr-sessions')
+@admin_bp.route('/api/users/<int:user_id>', methods=['DELETE'])
 @jwt_required()
-@role_required(['admin'])
-def get_active_qr_sessions():
-    """Obtener todas las sesiones QR activas"""
+@role_required('admin')
+def delete_user(user_id):
+    """Eliminar usuario"""
     try:
-        from services.qr_session_service import QRSessionService
+        user = User.query.get_or_404(user_id)
         
-        active_sessions = QRSessionService.get_active_qr_sessions()
+        # No permitir eliminar el último admin
+        if user.role == 'admin':
+            admin_count = User.query.filter_by(role='admin').count()
+            if admin_count <= 1:
+                return jsonify({
+                    'success': False,
+                    'message': 'No se puede eliminar el último administrador'
+                }), 400
+        
+        # Cerrar sesiones activas del usuario
+        UserSession.query.filter_by(user_id=user.id).delete()
+        
+        db.session.delete(user)
+        db.session.commit()
         
         return jsonify({
             'success': True,
-            'data': active_sessions,
-            'count': len(active_sessions)
+            'message': 'Usuario eliminado exitosamente'
         })
-    
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': f'Error al eliminar usuario: {str(e)}'
+        }), 500
+
+# APIs para monitoreo de sesiones
+@admin_bp.route('/api/active-sessions')
+@jwt_required()
+@role_required('admin')
+def get_active_sessions():
+    """Obtener todas las sesiones activas"""
+    try:
+        sessions = SessionService.get_all_active_sessions()
+        sessions_data = []
+        
+        for session in sessions:
+            session_data = {
+                'id': session.id,
+                'session_id': session.session_id,
+                'user': {
+                    'id': session.user.id,
+                    'username': session.user.username,
+                    'full_name': session.user.full_name,
+                    'role': session.user.role,
+                    'estacion': session.user.estacion
+                },
+                'ip_address': session.ip_address,
+                'device_info': session.device_info,
+                'created_at': session.created_at.isoformat(),
+                'last_activity': session.last_activity.isoformat(),
+                'expires_at': session.expires_at.isoformat() if session.expires_at else None,
+                'is_active': session.is_active
+            }
+            sessions_data.append(session_data)
+        
+        return jsonify({
+            'success': True,
+            'data': sessions_data,
+            'total': len(sessions_data)
+        })
     except Exception as e:
         return jsonify({
             'success': False,
-            'message': f'Error al obtener sesiones QR: {str(e)}'
+            'message': f'Error al obtener sesiones: {str(e)}'
         }), 500
 
-@admin_bp.route('/qr-sessions/<int:table_id>/end', methods=['POST'])
+@admin_bp.route('/api/sessions/<session_id>/close', methods=['POST'])
 @jwt_required()
-@role_required(['admin'])
-def end_qr_session(table_id):
-    """Finalizar manualmente una sesión QR"""
+@role_required('admin')
+def close_session(session_id):
+    """Cerrar una sesión específica"""
     try:
-        table = Table.query.get_or_404(table_id)
-        
-        if table.status != 'temp_occupied':
+        session = UserSession.query.filter_by(session_id=session_id).first()
+        if not session:
             return jsonify({
                 'success': False,
-                'message': 'La mesa no tiene una sesión QR activa'
+                'message': 'Sesión no encontrada'
+            }), 404
+        
+        session.invalidate()
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Sesión de {session.user.username} cerrada exitosamente'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': f'Error al cerrar sesión: {str(e)}'
+        }), 500
+
+@admin_bp.route('/api/users/<int:user_id>/close-sessions', methods=['POST'])
+@jwt_required()
+@role_required('admin')
+def close_user_sessions(user_id):
+    """Cerrar todas las sesiones de un usuario"""
+    try:
+        user = User.query.get_or_404(user_id)
+        closed_count = SessionService.close_user_sessions(user_id)
+        
+        return jsonify({
+            'success': True,
+            'message': f'Se cerraron {closed_count} sesiones de {user.username}'
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error al cerrar sesiones: {str(e)}'
+        }), 500
+
+# APIs adicionales para supervisión
+@admin_bp.route('/api/mesas-status')
+def get_mesas_status():
+    """Obtener estado de todas las mesas"""
+    if not check_admin_auth():
+        return jsonify({'success': False, 'message': 'No autorizado'}), 401
+    
+    try:
+        mesas = Table.query.all()
+        mesas_data = []
+        
+        for mesa in mesas:
+            mesa_data = {
+                'id': mesa.id,
+                'number': mesa.number,
+                'status': mesa.status,
+                'tiempo': None  # Se puede calcular si hay pedidos activos
+            }
+            mesas_data.append(mesa_data)
+        
+        return jsonify({
+            'success': True,
+            'mesas': mesas_data
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error al obtener estado de mesas: {str(e)}'
+        }), 500
+
+@admin_bp.route('/api/actividad-reciente')
+def get_actividad_reciente():
+    """Obtener actividad reciente del sistema"""
+    if not check_admin_auth():
+        return jsonify({'success': False, 'message': 'No autorizado'}), 401
+    
+    try:
+        # Obtener últimas sesiones creadas
+        recent_sessions = UserSession.query.order_by(UserSession.created_at.desc()).limit(10).all()
+        
+        actividades = []
+        for session in recent_sessions:
+            actividades.append({
+                'hora': session.created_at.strftime('%H:%M'),
+                'usuario': session.user.username,
+                'accion': 'Inicio de sesión',
+                'detalles': f'IP: {session.ip_address}'
+            })
+        
+        return jsonify({
+            'success': True,
+            'actividades': actividades
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error al obtener actividad reciente: {str(e)}'
+        }), 500
+
+# APIs para gestión de categorías y productos
+@admin_bp.route('/api/categorias')
+def get_categorias():
+    """Obtener todas las categorías"""
+    if not check_admin_auth():
+        return jsonify({'success': False, 'message': 'No autorizado'}), 401
+    
+    try:
+        categorias = Category.query.all()
+        categorias_data = []
+        
+        for categoria in categorias:
+            productos_count = Product.query.filter_by(category_id=categoria.id).count()
+            
+            categoria_data = {
+                'id': categoria.id,
+                'name': categoria.name,
+                'description': categoria.description,
+                'station': categoria.station,
+                'productos_count': productos_count
+            }
+            categorias_data.append(categoria_data)
+        
+        return jsonify({
+            'success': True,
+            'categorias': categorias_data
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error al obtener categorías: {str(e)}'
+        }), 500
+
+@admin_bp.route('/api/categorias', methods=['POST'])
+def create_categoria():
+    """Crear nueva categoría"""
+    if not check_admin_auth():
+        return jsonify({'success': False, 'message': 'No autorizado'}), 401
+    
+    try:
+        data = request.get_json()
+        
+        if not data.get('name'):
+            return jsonify({
+                'success': False,
+                'message': 'El nombre de la categoría es requerido'
             }), 400
         
-        table.end_qr_session()
+        categoria = Category(
+            name=data['name'],
+            description=data.get('description'),
+            station=data.get('station')
+        )
+        
+        db.session.add(categoria)
         db.session.commit()
         
         return jsonify({
             'success': True,
-            'message': 'Sesión QR finalizada manualmente',
-            'data': table.to_dict()
-        })
-    
+            'message': 'Categoría creada exitosamente',
+            'categoria': {
+                'id': categoria.id,
+                'name': categoria.name,
+                'description': categoria.description,
+                'station': categoria.station
+            }
+        }), 201
+        
     except Exception as e:
         db.session.rollback()
         return jsonify({
             'success': False,
-            'message': f'Error al finalizar sesión QR: {str(e)}'
+            'message': f'Error al crear categoría: {str(e)}'
         }), 500
 
-# === GESTIÓN DE RESEÑAS ===
-
-@admin_bp.route('/reviews/pending')
-@jwt_required()
-@role_required(['admin'])
-def get_pending_reviews():
-    """Obtener reseñas pendientes de aprobación"""
+@admin_bp.route('/api/productos')
+def get_productos():
+    """Obtener todos los productos"""
+    if not check_admin_auth():
+        return jsonify({'success': False, 'message': 'No autorizado'}), 401
+    
     try:
-        pending_reviews = Review.query.filter_by(is_approved=False).order_by(
-            Review.created_at.desc()
-        ).all()
+        productos = db.session.query(Product, Category.name.label('category_name')).join(Category, Product.category_id == Category.id).all()
+        productos_data = []
+        
+        for producto, category_name in productos:
+            producto_data = {
+                'id': producto.id,
+                'name': producto.name,
+                'description': producto.description,
+                'price': float(producto.price),
+                'available': producto.available,
+                'category_id': producto.category_id,
+                'category_name': category_name
+            }
+            productos_data.append(producto_data)
         
         return jsonify({
             'success': True,
-            'data': [review.to_dict() for review in pending_reviews]
+            'productos': productos_data
         })
-    
     except Exception as e:
         return jsonify({
             'success': False,
-            'message': f'Error al obtener reseñas pendientes: {str(e)}'
+            'message': f'Error al obtener productos: {str(e)}'
         }), 500
 
-@admin_bp.route('/reviews/<int:review_id>/approve', methods=['PATCH'])
-@jwt_required()
-@role_required(['admin'])
-def approve_review(review_id):
-    """Aprobar una reseña"""
+@admin_bp.route('/api/productos', methods=['POST'])
+def create_producto():
+    """Crear nuevo producto"""
+    if not check_admin_auth():
+        return jsonify({'success': False, 'message': 'No autorizado'}), 401
+    
     try:
-        review = Review.query.get_or_404(review_id)
-        admin_id = get_jwt_identity()
+        data = request.get_json()
         
-        review.is_approved = True
-        review.approved_at = datetime.utcnow()
-        review.approved_by = admin_id
+        required_fields = ['name', 'price', 'category_id']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({
+                    'success': False,
+                    'message': f'Campo requerido: {field}'
+                }), 400
         
+        # Verificar que la categoría existe
+        categoria = Category.query.get(data['category_id'])
+        if not categoria:
+            return jsonify({
+                'success': False,
+                'message': 'Categoría no encontrada'
+            }), 400
+        
+        producto = Product(
+            name=data['name'],
+            description=data.get('description'),
+            price=data['price'],
+            category_id=data['category_id'],
+            available=data.get('available', True)
+        )
+        
+        db.session.add(producto)
         db.session.commit()
         
         return jsonify({
             'success': True,
-            'message': 'Reseña aprobada correctamente',
-            'data': review.to_dict()
-        })
-    
+            'message': 'Producto creado exitosamente',
+            'producto': {
+                'id': producto.id,
+                'name': producto.name,
+                'description': producto.description,
+                'price': float(producto.price),
+                'available': producto.available,
+                'category_id': producto.category_id
+            }
+        }), 201
+        
     except Exception as e:
         db.session.rollback()
         return jsonify({
             'success': False,
-            'message': f'Error al aprobar reseña: {str(e)}'
+            'message': f'Error al crear producto: {str(e)}'
+        }), 500
+
+@admin_bp.route('/status')
+def admin_status():
+    """Estado general del admin para dashboard"""
+    if not check_admin_auth():
+        return redirect(url_for('main.login_page'))
+    
+    try:
+        # Estadísticas que espera el dashboard
+        usuarios_activos = UserSession.query.filter_by(is_active=True).count()
+        mesas_ocupadas = Table.query.filter_by(status='occupied').count()
+        pedidos_pendientes = Order.query.filter(Order.status.in_(['pending', 'in_kitchen'])).count()
+        
+        # Calcular ventas del día
+        from datetime import date
+        today = date.today()
+        ventas_hoy = db.session.query(db.func.sum(Order.total_amount)).filter(
+            db.func.date(Order.created_at) == today,
+            Order.status == 'paid'
+        ).scalar() or 0
+        
+        # Estado del sistema
+        sistema = {
+            'sesiones_activas': usuarios_activos,
+            'tiempo_activo': 'N/A'  # Puedes implementar esto si tienes timestamp de inicio del servidor
+        }
+        
+        # Actividad reciente (últimas acciones)
+        actividad_reciente = []
+        try:
+            recent_orders = Order.query.order_by(Order.created_at.desc()).limit(3).all()
+            for order in recent_orders:
+                actividad_reciente.append({
+                    'tipo': 'Nuevo Pedido',
+                    'descripcion': f'Pedido #{order.order_number} - Mesa {order.table.number if order.table else "N/A"}',
+                    'tiempo': order.created_at.strftime('%H:%M')
+                })
+        except Exception as e:
+            print(f"Error obteniendo actividad reciente: {e}")
+        
+        return jsonify({
+            'usuarios_activos': usuarios_activos,
+            'mesas_ocupadas': mesas_ocupadas,
+            'pedidos_pendientes': pedidos_pendientes,
+            'ventas_hoy': float(ventas_hoy),
+            'sistema': sistema,
+            'actividad_reciente': actividad_reciente
+        })
+        
+    except Exception as e:
+        print(f"Error en admin_status: {e}")
+        return jsonify({
+            'usuarios_activos': 0,
+            'mesas_ocupadas': 0,
+            'pedidos_pendientes': 0,
+            'ventas_hoy': 0,
+            'sistema': {'sesiones_activas': 0, 'tiempo_activo': 'Error'},
+            'actividad_reciente': []
         }), 500

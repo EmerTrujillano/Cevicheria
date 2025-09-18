@@ -2,6 +2,9 @@ from flask import Blueprint, request, jsonify
 from utils.decorators import area_required, admin_required, user_or_higher
 from services.product_service import ProductService
 from models import Category
+import os
+from werkzeug.utils import secure_filename
+from datetime import datetime
 
 products_bp = Blueprint('products', __name__)
 
@@ -143,3 +146,48 @@ def get_user_permissions(current_user):
             'delete': can_modify
         }
     }), 200
+
+@products_bp.route('/upload-image', methods=['POST'])
+@admin_required
+def upload_product_image(current_user):
+    """Subir imagen de producto - Solo ADMIN y SUPERADMIN"""
+    try:
+        if 'image' not in request.files:
+            return jsonify({'message': 'No se encontró archivo de imagen'}), 400
+        
+        file = request.files['image']
+        if file.filename == '':
+            return jsonify({'message': 'No se seleccionó archivo'}), 400
+        
+        # Validar tipo de archivo
+        allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+        if not ('.' in file.filename and 
+                file.filename.rsplit('.', 1)[1].lower() in allowed_extensions):
+            return jsonify({'message': 'Tipo de archivo no permitido'}), 400
+        
+        # Crear nombre de archivo seguro
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = secure_filename(file.filename)
+        name, ext = os.path.splitext(filename)
+        secure_name = f"product_{timestamp}_{name}{ext}"
+        
+        # Crear directorio si no existe
+        upload_folder = os.path.join('static', 'images', 'products')
+        os.makedirs(upload_folder, exist_ok=True)
+        
+        # Guardar archivo
+        file_path = os.path.join(upload_folder, secure_name)
+        file.save(file_path)
+        
+        # URL relativa para la base de datos
+        image_url = f"/static/images/products/{secure_name}"
+        
+        return jsonify({
+            'message': 'Imagen subida exitosamente',
+            'image_url': image_url,
+            'filename': secure_name,
+            'uploaded_by': current_user.username
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'message': f'Error al subir imagen: {str(e)}'}), 500

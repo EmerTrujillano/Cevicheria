@@ -1,0 +1,123 @@
+﻿{% extends "base.html" %}
+{% block title %}Menú - Cevichería{% endblock %}
+{% block content %}
+<div class="container py-4">
+    <h1>Menú</h1>
+    <p>Mesa seleccionada: <span id="mesa-actual"></span></p>
+    <div class="row" id="menu-productos">
+        <!-- Productos dinámicos -->
+    </div>
+    <div class="mt-3">
+        <button class="btn btn-primary" onclick="enviarPedido()">Enviar Pedido</button>
+        <button class="btn btn-secondary" onclick="limpiarPedido()">Limpiar</button>
+    </div>
+</div>
+<script>
+// JavaScript para menú de mozo
+let pedidoActual = [];
+let mesaSeleccionada = null;
+
+function cargarMenu() {
+    // Obtener token del localStorage o sessionStorage
+    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+    
+    if (!token) {
+        alert('No hay token de autenticación. Inicie sesión nuevamente.');
+        window.location.href = '/login';
+        return;
+    }
+    
+    fetch('/mozo/api/productos-menu', {
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        }
+    })
+        .then(response => response.json())
+        .then(data => {
+            const menuContainer = document.getElementById('menu-productos');
+            menuContainer.innerHTML = '';
+            
+            if (data.success) {
+                data.data.forEach(categoria => {
+                    const categoriaNombre = categoria.categoria.name;
+                    menuContainer.innerHTML += `<div class="col-12"><h3>${categoriaNombre}</h3></div>`;
+                    
+                    categoria.productos.forEach(producto => {
+                        menuContainer.innerHTML += `
+                            <div class="col-md-4 mb-3">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h5 class="card-title">${producto.name}</h5>
+                                        <p class="card-text">${producto.description}</p>
+                                        <p class="card-text"><strong>$${producto.price}</strong></p>
+                                        <button class="btn btn-primary btn-sm" onclick="agregarAlPedido(${producto.id}, '${producto.name}', ${producto.price})">Agregar</button>
+                                    </div>
+                                </div>
+                            </div>`;
+                    });
+                });
+            } else {
+                menuContainer.innerHTML = `<div class="alert alert-danger">Error: ${data.message}</div>`;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('menu-productos').innerHTML = 
+                '<div class="alert alert-danger">Error al cargar el menú</div>';
+        });
+}
+
+function agregarAlPedido(id, nombre, precio) {
+    const item = pedidoActual.find(p => p.id === id);
+    if (item) {
+        item.cantidad++;
+    } else {
+        pedidoActual.push({id, nombre, precio, cantidad: 1});
+    }
+    actualizarResumenPedido();
+}
+
+function actualizarResumenPedido() {
+    console.log('Pedido actual:', pedidoActual);
+}
+
+function enviarPedido() {
+    if (!mesaSeleccionada) {
+        alert('Seleccione una mesa primero');
+        return;
+    }
+    if (pedidoActual.length === 0) {
+        alert('El pedido está vacío');
+        return;
+    }
+    
+    fetch('/mozo/orders', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            mesa_id: mesaSeleccionada,
+            items: pedidoActual
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Pedido enviado exitosamente');
+            limpiarPedido();
+        } else {
+            alert(data.error);
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+function limpiarPedido() {
+    pedidoActual = [];
+    actualizarResumenPedido();
+}
+
+// Cargar menú al inicio
+cargarMenu();
+</script>
+{% endblock %}

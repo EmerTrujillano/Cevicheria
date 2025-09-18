@@ -1,5 +1,7 @@
 from datetime import datetime
 from config.extensions import db
+from werkzeug.security import generate_password_hash, check_password_hash
+from utils.timezone_utils import lima_datetime_naive
 
 class User(db.Model):
     __tablename__ = 'user'
@@ -8,11 +10,13 @@ class User(db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False)
     password = db.Column(db.String(120), nullable=False)
     role = db.Column(db.String(20), nullable=False, default='user')
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    estacion = db.Column(db.String(50), nullable=True)  # Para usuarios de cocina: 'frios', 'calientes', 'bebidas', 'postres'
+    created_at = db.Column(db.DateTime, default=lima_datetime_naive)
     
     # Control de sesiones
     current_session_token = db.Column(db.String(255), nullable=True)
     last_login = db.Column(db.DateTime, nullable=True)
+    last_activity = db.Column(db.DateTime, nullable=True)  # Nueva campo para auto-logout
     session_expires_at = db.Column(db.DateTime, nullable=True)
 
     # Relaciones
@@ -32,11 +36,25 @@ class User(db.Model):
     def __repr__(self):
         return f'<User {self.username}>'
 
+    def set_password(self, password):
+        """Establecer contraseña hasheada"""
+        self.password = generate_password_hash(password, method='pbkdf2:sha256')
+    
+    def check_password(self, password):
+        """Verificar contraseña"""
+        return check_password_hash(self.password, password)
+
+    @property
+    def is_active(self):
+        """Compatibilidad - usuarios siempre activos por defecto"""
+        return True
+
     def to_dict(self):
         result = {
             'id': self.id,
             'username': self.username,
             'role': self.role,
+            'estacion': self.estacion,
             'created_at': self.created_at.isoformat()
         }
         

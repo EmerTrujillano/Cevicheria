@@ -1,5 +1,6 @@
 import os
 from datetime import timedelta
+import pytz
 
 class Config:
     """Configuración base de la aplicación"""
@@ -7,6 +8,9 @@ class Config:
     JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY') or 'SKDJHSAKDjsJDSDJSJHSKJjfdflññdoodñflsf'
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=1)
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    
+    # Configuración de zona horaria para Lima, Perú
+    TIMEZONE = pytz.timezone('America/Lima')
 
 class DevelopmentConfig(Config):
     """Configuración para desarrollo con SQLite"""

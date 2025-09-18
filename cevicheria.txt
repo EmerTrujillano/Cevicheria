@@ -4,19 +4,16 @@ vistas: (mozo, cliente, cocina, caja, menu, administrador)
 cliente:	el cliente podrá ver el menú o lo que ofrece la cevichería al escanear un código QR desde su mesa, el cual lo redireccionará a la vista del menú virtual.
 		no será necesario registrarse ni iniciar sesión, solo escanear y navegar. desde esta vista podrá revisar los platos disponibles, sus descripciones, ingredientes, precios y algunas reseñas de otros clientes.
 
-menu virtual: 	Muestra los productos disponibles con una breve descripción, los ingredientes que lleva cada plato, y algunas pequeñas reseñas de clientes que ya los probaron. Cada producto estará acompañado de su precio actualizado. 
-		El menú debe estar organizado por categorías para facilitar la navegación (por ejemplo: entradas, ceviches, platos calientes, bebidas, postres). Los productos pueden tener etiquetas visuales como “picante”, “recomendado”, “nuevo” o “más vendido” para ayudar al cliente en su elección. 
-		Esta vista estará disponible para el cliente al escanear un código QR único ubicado en su mesa, o al ingresar desde un enlace en caso de delivery.
-		Al escanear el QR de la mesa, el sistema marcará automáticamente dicha mesa como "ocupada temporalmente" y se iniciará un temporizador de 10 minutos. Si el cliente no realiza ningún pedido dentro de ese plazo, la mesa volverá a mostrarse como disponible.
-		Esta lógica ayuda a evitar bloqueos innecesarios de mesas por inactividad.
-		En caso de que el mozo marque manualmente que la mesa ya realizó su pedido, el temporizador se desactiva y la mesa permanecerá ocupada hasta el cierre.
+menu virtual: 	Muestra los productos disponibles con una breve descripción, los ingredientes de cada plato, su precio actualizado y pequeñas reseñas de clientes que ya los probaron.
+		El menú estará organizado por categorías (entradas, ceviches, platos calientes, bebidas, postres) para facilitar la navegación. Los productos podrán incluir etiquetas visuales como “picante”, “recomendado”, “nuevo” o “más vendido”, ayudando al cliente en su elección.
+		Esta vista estará disponible mediante un QR único para todo el local o mediante un enlace (por ejemplo, para pedidos por delivery).
+		Nota importante: Al escanear el QR, no se marcará automáticamente la mesa como ocupada, ya que el QR es el mismo para todas. La gestión del estado de la mesa (disponible u ocupada) será responsabilidad del mozo, quien podrá hacerlo desde su interfaz al momento de tomar el pedido.
 
 mozo: 		El mozo podrá ver los sitios disponibles y no disponibles para acomodar al cliente, considerando que el local puede tener más de un piso, así como distintas zonas como niños, terraza, barra, 
 		zona de espera (en caso de pedidos para llevar), salón privado o eventos, y delivery. Los distintos pisos y zonas deben estar visibles en la interfaz del mozo para que pueda marcar la mesa como ocupada.
 		Para tomar el pedido, el mozo primero debe seleccionar la mesa junto con la zona que prefiera el cliente, facilitando así la correcta asignación y distribución del pedido en cocina.
 		Luego, desde la misma vista, podrá ubicar los platos organizados por categorías, incluyendo bebidas, para una selección rápida y sencilla.
-		Una vez que el cliente haya escogido todos los platos, el mozo podrá añadir modificadores, como bebidas adicionales o cortesías. Además, el cliente podrá especificar detalles particulares para cada plato, por ejemplo, "ceviche sin cebolla".
-		Al finalizar, el pedido se enviará automáticamente a cocina.
+		Desde la misma vista podrá acceder al menú organizado por categorías y tomar el pedido, añadiendo modificadores como bebidas adicionales o cortesías, y permitiendo detalles especiales por plato (ej. "ceviche sin cebolla").
 
 		En caso de que un plato sea modificado o cancelado desde cocina, el mozo recibirá una alerta visual discreta (sin notificaciones emergentes ni sonidos) que le permitirá estar al tanto de la situación y comunicárselo al cliente si es necesario.
 		Adicionalmente, podrá visualizar en todo momento el estado de cada plato mediante un sistema de colores que facilita el seguimiento y evita la sobrecarga de información:
@@ -119,3 +116,137 @@ Vista mozo (requiere login):
 /mozo/tomar-pedido
 
 /mozo/ordenes
+
+# 🎯 CONTEXTO GENERAL DEL PROYECTO
+
+Estoy desarrollando un sistema de gestión para una cevichería con:
+
+- **Python + Flask** como backend
+- **MySQL** como base de datos (administrada vía phpMyAdmin)
+- Tengo roles definidos como: cliente, mozo, cocina, caja, administrador
+- Ya está implementado el sistema de login, pero **actualmente solo muestra un mensaje** (“ingreso exitoso”) y **no redirige a la vista correspondiente según el rol**
+- Ya tengo parte del menú y la base de datos con productos, usuarios y pedidos.
+
+---
+
+# 🔄 CAMBIOS Y ACTUALIZACIONES NECESARIAS
+
+## ✅ LOGIN Y REDIRECCIÓN POR ROL
+
+Quiero que, al iniciar sesión, el sistema detecte el rol del usuario y lo redirija automáticamente a la vista correspondiente:
+
+| Rol        | Ruta destino         | Vista que debe cargar            |
+|------------|----------------------|----------------------------------|
+| mozo       | `/mozo`              | Vista de control de mesas y pedidos |
+| cocina     | `/cocina`            | Vista Kanban por estación        |
+| administrador | `/admin`         | Vista de supervisión general     |
+| caja       | `/caja`              | *🔴 Aún no implementada*         |
+
+---
+
+## 🧾 FUNCIONALIDAD DEL MENÚ VIRTUAL Y QR
+
+Actualmente, el sistema genera **un QR diferente por mesa**, pero quiero cambiar eso por simplicidad:
+
+- El **QR será único para todo el local**.
+- Al escanear el QR, el cliente ve el **menú virtual** sin necesidad de iniciar sesión.
+- El menú está organizado por categorías, y muestra platos con:
+  - Nombre, descripción, ingredientes, precio
+  - Etiquetas visuales: “picante”, “recomendado”, “más vendido”, etc.
+  - Reseñas de otros clientes
+
+- El cliente **no debe poder pedir directamente** desde esta vista.
+- El **mozo es quien debe iniciar el pedido**, y al hacerlo, debe poder:
+  - Seleccionar la mesa manualmente
+  - Marcarla como ocupada
+  - Iniciar la comanda desde su panel
+
+---
+
+## 🍽️ VISTA DE COCINA — ESTILO KANBAN
+
+La cocina estará organizada por **estaciones**:
+- fríos
+- calientes
+- bebidas
+- postres
+
+Cada estación tendrá **su propio usuario único**, por ejemplo:
+- `cocina1` → fríos
+- `cocina2` → calientes
+
+Cada usuario solo puede iniciar sesión en **un dispositivo a la vez**.
+
+### ✔ Al iniciar sesión, el usuario de cocina:
+- Será redirigido a `/cocina`
+- Verá un **tablero estilo Kanban** dividido por estados de plato:
+
+🟢 En cola → plato recibido
+🟡 En preparación → plato en proceso
+🔴 Listo para entregar → plato terminado
+⚪ Entregado / servido → entregado al cliente
+🟠 Cancelado o modificado → cambio importante
+
+### 💡 Detalles técnicos:
+- Solo debe ver los platos asignados a su estación (según el campo `estacion` del usuario y del plato).
+- Las tarjetas de plato deben poder moverse entre columnas con **drag & drop** (usa SortableJS o similar).
+- Al cambiar el estado, debe enviarse una solicitud al backend (`/cambiar_estado`) para actualizar en la base de datos.
+- Opción extra: resaltar platos si llevan mucho tiempo en un estado (ej: más de 10 minutos).
+
+---
+
+## 🧑‍🍳 VISTA DE MOZO
+
+Ruta: `/mozo`
+
+El mozo debe poder:
+- Ver todas las mesas por piso y zona (ej: terraza, barra, etc.)
+- Ver cuáles están disponibles, ocupadas, en espera, etc.
+- Seleccionar una mesa para iniciar un nuevo pedido
+- Ver los productos por categoría (igual que el cliente)
+- Agregar platos al pedido con modificadores (ej: sin cebolla)
+- Enviar el pedido a cocina
+
+Adicional:
+- Si cocina cancela o modifica un plato, debe recibir un **alerta visual discreta** (no notificaciones emergentes).
+- El mozo ve el estado de cada plato con un código de color (🟢🟡🔴⚪🟠).
+
+---
+
+## 🛠️ VISTA DE ADMINISTRADOR
+
+Ruta: `/admin`
+
+El administrador debe tener acceso a:
+- Supervisar en tiempo real:
+  - Estado de las mesas
+  - Pedidos en curso
+  - Vista general de cocina y mozos
+- Modificar el menú:
+  - Agregar, editar, eliminar productos
+  - Cambiar precios
+  - Marcar productos como agotados
+- Configurar el local:
+  - Definir zonas (terraza, barra, etc.)
+  - Asignar número de mesas por zona y piso
+- Ver un historial de ventas básico
+- Gestionar usuarios del sistema
+
+---
+
+# 🚫 VISTA DE CAJA
+
+⚠️ Por el momento, **no implementar la vista de caja**.  
+Se implementará más adelante una vez que el resto del flujo esté funcional.
+
+---
+
+# 🧩 MODELOS Y BD (SUGERIDO)
+
+En la tabla `usuarios` asegúrate de tener:
+
+```sql
+id, username, password, rol, estacion (nullable)
+
+En la tabla platos (o pedido_detalle):
+id, nombre, categoria, estado, estacion, modificadores, tiempo_creacion

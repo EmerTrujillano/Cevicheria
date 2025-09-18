@@ -26,10 +26,23 @@
 </div>
 
 <script>
-// Redirigir si ya está autenticado
+// Redirigir si ya está autenticado según su rol
 document.addEventListener('DOMContentLoaded', function() {
     if (authToken && currentUser) {
-        window.location.href = '/dashboard';
+        switch(currentUser.role) {
+            case 'admin':
+                window.location.href = '/admin';
+                break;
+            case 'waiter':
+                window.location.href = '/mozo';
+                break;
+            case 'kitchen':
+                window.location.href = '/cocina';
+                break;
+            case 'cashier':
+                window.location.href = '/caja';
+                break;
+        }
     }
 });
 
@@ -60,14 +73,24 @@ async function handleLogin(event) {
             showAlert('Inicio de sesión exitoso', 'success');
             updateNavbar();
             
-            // Redirigir según el rol
+            // Redirección automática según el rol del usuario
             setTimeout(() => {
-                if (currentUser.role === 'superadmin') {
-                    window.location.href = '/superadmin';
-                } else if (currentUser.role === 'admin') {
-                    window.location.href = '/admin';
-                } else {
-                    window.location.href = '/dashboard';
+                switch(data.user.role) {
+                    case 'admin':
+                        window.location.href = '/admin';
+                        break;
+                    case 'waiter':
+                        window.location.href = '/mozo';
+                        break;
+                    case 'kitchen':
+                        window.location.href = '/cocina';
+                        break;
+                    case 'cashier':
+                        window.location.href = '/caja';
+                        break;
+                    default:
+                        // Para roles no definidos, mantener en login
+                        showAlert('Rol no reconocido, contacte al administrador', 'warning');
                 }
             }, 1000);
         } else {

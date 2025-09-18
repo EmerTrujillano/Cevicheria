@@ -1,0 +1,151 @@
+﻿{% extends "base.html" %}
+{% block title %}Cocina - Cevichería{% endblock %}
+{% block content %}
+<div class="container py-4">
+    <h1>Panel de Cocina</h1>
+    <p>Tablero Kanban por estaciones</p>
+    <div class="alert alert-info">
+        <strong>Estación:</strong> <span id="estacion-usuario">Cargando...</span>
+    </div>
+    <div class="row">
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-header bg-secondary text-white">En Cola</div>
+                <div class="card-body" id="cola-pedidos">
+                    <!-- Pedidos en cola -->
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-header bg-warning">En Preparación</div>
+                <div class="card-body" id="preparacion-pedidos">
+                    <!-- Pedidos en preparación -->
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-header bg-success text-white">Listo</div>
+                <div class="card-body" id="listo-pedidos">
+                    <!-- Pedidos listos -->
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-header bg-info text-white">Entregado</div>
+                <div class="card-body" id="entregado-pedidos">
+                    <!-- Pedidos entregados -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+<script>
+// JavaScript para Kanban de cocina
+let estacionUsuario = '';
+
+function cargarEstacionUsuario() {
+    fetch('/cocina/station')
+        .then(response => response.json())
+        .then(data => {
+            estacionUsuario = data.estacion;
+            document.getElementById('estacion-usuario').textContent = estacionUsuario;
+            cargarPedidosKanban();
+        })
+        .catch(error => console.error('Error:', error));
+}
+
+function cargarPedidosKanban() {
+    fetch('/cocina/kanban')
+        .then(response => response.json())
+        .then(data => {
+            // Limpiar columnas
+            document.getElementById('cola-pedidos').innerHTML = '';
+            document.getElementById('preparacion-pedidos').innerHTML = '';
+            document.getElementById('listo-pedidos').innerHTML = '';
+            document.getElementById('entregado-pedidos').innerHTML = '';
+            
+            // Llenar columnas con pedidos
+            data.forEach(item => {
+                const pedidoElement = crearElementoPedido(item);
+                const columna = getColumnaByEstado(item.estado);
+                if (columna) {
+                    columna.appendChild(pedidoElement);
+                }
+            });
+        })
+        .catch(error => console.error('Error:', error));
+}
+
+function crearElementoPedido(item) {
+    const div = document.createElement('div');
+    div.className = 'card mb-2';
+    div.draggable = true;
+    div.dataset.itemId = item.id;
+    div.innerHTML = `
+        <div class="card-body p-2">
+            <small><strong>Mesa ${item.mesa_numero}</strong></small><br>
+            <small>${item.producto_nombre}</small><br>
+            <small>Cant: ${item.cantidad}</small>
+        </div>`;
+    return div;
+}
+
+function getColumnaByEstado(estado) {
+    switch(estado) {
+        case 'pendiente': return document.getElementById('cola-pedidos');
+        case 'preparando': return document.getElementById('preparacion-pedidos');
+        case 'listo': return document.getElementById('listo-pedidos');
+        case 'entregado': return document.getElementById('entregado-pedidos');
+        default: return null;
+    }
+}
+
+function cambiarEstadoPedido(itemId, nuevoEstado) {
+    fetch('/cocina/update-status', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            item_id: itemId,
+            estado: nuevoEstado
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (!data.success) {
+            alert(data.error || 'Error al actualizar estado');
+            cargarPedidosKanban(); // Recargar en caso de error
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        cargarPedidosKanban();
+    });
+}
+
+// Configurar Sortable para drag and drop
+document.addEventListener('DOMContentLoaded', function() {
+    const columnas = ['cola-pedidos', 'preparacion-pedidos', 'listo-pedidos', 'entregado-pedidos'];
+    const estados = ['pendiente', 'preparando', 'listo', 'entregado'];
+    
+    columnas.forEach((columnaId, index) => {
+        const columna = document.getElementById(columnaId);
+        new Sortable(columna, {
+            group: 'kanban',
+            animation: 150,
+            onEnd: function(evt) {
+                const itemId = evt.item.dataset.itemId;
+                const nuevoEstado = estados[index];
+                cambiarEstadoPedido(itemId, nuevoEstado);
+            }
+        });
+    });
+    
+    cargarEstacionUsuario();
+    setInterval(cargarPedidosKanban, 15000); // Actualizar cada 15 segundos
+});
+</script>
+{% endblock %}

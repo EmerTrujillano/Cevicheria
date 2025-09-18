@@ -47,7 +47,16 @@ class ProductService:
             category_id=data['category_id'],
             brand=data.get('brand'),
             sku=data.get('sku'),
-            unit=data.get('unit')
+            unit=data.get('unit'),
+            # Campos específicos para cevichería
+            ingredients=data.get('ingredients'),
+            tags=data.get('tags'),
+            image_url=data.get('image_url'),
+            image_gallery=data.get('image_gallery'),
+            is_available=data.get('is_available', True),
+            station_type=data.get('station_type', 'hot'),
+            preparation_time=data.get('preparation_time', 15),
+            spice_level=data.get('spice_level', 'mild')
         )
         
         db.session.add(product)
@@ -79,7 +88,12 @@ class ProductService:
                 return None, 'El SKU ya existe'
         
         # Actualizar campos
-        for field in ['name', 'description', 'price', 'stock', 'category_id', 'brand', 'sku', 'unit']:
+        updatable_fields = [
+            'name', 'description', 'price', 'stock', 'category_id', 'brand', 'sku', 'unit',
+            'ingredients', 'tags', 'image_url', 'image_gallery', 'is_available', 
+            'station_type', 'preparation_time', 'spice_level'
+        ]
+        for field in updatable_fields:
             if field in data:
                 setattr(product, field, data[field])
         

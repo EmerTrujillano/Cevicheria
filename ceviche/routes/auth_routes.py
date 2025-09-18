@@ -1,7 +1,8 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, session
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from config.extensions import blacklisted_tokens
 from services.auth_service import AuthService
+from services.session_service import SessionService
 from models import User
 from utils.decorators import role_required
 
@@ -74,24 +75,32 @@ def login():
         
         username = data.get('username')
         password = data.get('password')
-        print(f"[DEBUG] Username: {username}, Password presente: {bool(password)}")
+        force_new = data.get('force_new', False)  # Para cerrar sesiones remotas
+        print(f"[DEBUG] Username: {username}, Password presente: {bool(password)}, Force new: {force_new}")
         
         if not username or not password:
             print("[DEBUG] Username o password faltante en login")
             return jsonify({'message': 'Usuario y contraseña son requeridos'}), 400
         
-        user, access_token, error = AuthService.authenticate_user(username, password)
-        print(f"[DEBUG] Resultado del servicio - User: {user}, Token presente: {bool(access_token)}, Error: {error}")
-        
+        # Primero autenticar credenciales
+        user, access_token, error = AuthService.authenticate_user(username, password, force_new)
         if error:
             print(f"[DEBUG] Error de autenticación: {error}")
             return jsonify({'message': error}), 401
         
+        # Si llegamos aquí, AuthService ya creó la sesión exitosamente
         print(f"[DEBUG] Login exitoso para usuario: {username}")
         return jsonify({
             'access_token': access_token,
-            'user': user.to_dict()
+            'user': user.to_dict(),
+            'session': {'status': 'active', 'created': True}
         }), 200
+        
+    except Exception as e:
+        print(f"[DEBUG] Excepción en /login: {str(e)}")
+        import traceback
+        print(f"[DEBUG] Traceback completo: {traceback.format_exc()}")
+        return jsonify({'message': f'Error interno del servidor: {str(e)}'}), 500
         
     except Exception as e:
         print(f"[DEBUG] Excepción en /login: {str(e)}")
@@ -112,9 +121,13 @@ def logout():
         # Agregar token a blacklist
         blacklisted_tokens.add(jti)
         
-        # Terminar sesión del usuario
-        from services.auth_service import AuthService
-        AuthService.logout_user(current_user_id)
+        # Terminar sesión usando el nuevo sistema
+        session_id = session.get('session_id')
+        if session_id:
+            SessionService.invalidate_session(session_id, 'manual_logout')
+        
+        # Limpiar sesión web
+        session.clear()
         
         print(f"[AUTH] Logout exitoso para usuario ID: {current_user_id}")
         return jsonify({'message': 'Logout exitoso'}), 200
@@ -127,26 +140,21 @@ def logout():
 def session_status():
     """Verificar el estado de la sesión actual"""
     try:
-        from flask_jwt_extended import verify_jwt_in_request, get_jwt_identity, get_jwt
-        verify_jwt_in_request()
-        
-        current_user_id = get_jwt_identity()
-        claims = get_jwt()
-        session_token = claims.get('session_token')
-        
-        if not session_token:
+        session_id = session.get('session_id')
+        if not session_id:
             return jsonify({
                 'valid': False,
-                'message': 'Token sin información de sesión'
+                'message': 'No hay sesión activa'
             }), 200
         
-        from services.session_service import SessionService
-        is_valid, message = SessionService.validate_session(current_user_id, session_token)
+        # Validar sesión usando el nuevo sistema
+        validation_result = SessionService.validate_session(session_id)
         
         return jsonify({
-            'valid': is_valid,
-            'message': message,
-            'user_id': current_user_id
+            'valid': validation_result['valid'],
+            'message': validation_result.get('reason', 'Sesión válida'),
+            'session_info': validation_result.get('session'),
+            'user_info': validation_result.get('user')
         }), 200
         
     except Exception as e:
@@ -394,4 +402,80 @@ def validate_username_only():
             'reason': 'validation_error'
         }), 200
 
+@auth_bp.route('/close-remote-sessions', methods=['POST'])
+def close_remote_sessions():
+    """Cerrar sesiones remotas y crear nueva sesión"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'message': 'Datos requeridos'}), 400
+        
+        username = data.get('username')
+        password = data.get('password')
+        
+        if not username or not password:
+            return jsonify({'message': 'Usuario y contraseña son requeridos'}), 400
+        
+        # Primero autenticar credenciales
+        user, access_token, error = AuthService.authenticate_user(username, password)
+        if error:
+            return jsonify({'message': error}), 401
+        
+        # Forzar cierre de sesiones remotas y crear nueva
+        session_result = SessionService.create_session(user, force_new=True)
+        
+        if not session_result['success']:
+            return jsonify({'message': session_result.get('error', 'Error creando sesión')}), 500
+        
+        return jsonify({
+            'access_token': access_token,
+            'user': user.to_dict(),
+            'session': session_result['session'],
+            'message': 'Sesiones remotas cerradas exitosamente'
+        }), 200
+        
+    except Exception as e:
+        print(f"[AUTH] Error cerrando sesiones remotas: {str(e)}")
+        return jsonify({'message': f'Error interno del servidor: {str(e)}'}), 500
 
+@auth_bp.route('/active-sessions', methods=['GET'])
+@jwt_required()
+@role_required(['admin'])
+def get_all_active_sessions():
+    """Obtener todas las sesiones activas del sistema (solo admin)"""
+    try:
+        sessions = SessionService.get_active_sessions(include_user_info=True)
+        
+        return jsonify({
+            'active_sessions': sessions,
+            'total_sessions': len(sessions)
+        }), 200
+        
+    except Exception as e:
+        print(f"[AUTH] Error obteniendo sesiones activas: {str(e)}")
+        return jsonify({'message': f'Error interno del servidor: {str(e)}'}), 500
+
+@auth_bp.route('/extend-session', methods=['POST'])
+def extend_current_session():
+    """Extender la sesión actual (respuesta a ¿Sigues ahí?)"""
+    try:
+        session_id = session.get('session_id')
+        if not session_id:
+            return jsonify({'message': 'No hay sesión activa'}), 400
+        
+        data = request.get_json() or {}
+        hours = data.get('hours', 2)  # Extender 2 horas por defecto
+        
+        success = SessionService.extend_session(session_id, hours)
+        
+        if success:
+            return jsonify({
+                'message': f'Sesión extendida por {hours} horas',
+                'extended_hours': hours
+            }), 200
+        else:
+            return jsonify({'message': 'Error extendiendo sesión'}), 500
+            
+    except Exception as e:
+        print(f"[AUTH] Error extendiendo sesión: {str(e)}")
+        return jsonify({'message': f'Error interno del servidor: {str(e)}'}), 500

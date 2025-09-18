@@ -4,7 +4,6 @@ from models import User
 from models.user_session import UserSession
 from flask_jwt_extended import create_access_token
 from services.session_service import SessionService
-from werkzeug.security import check_password_hash
 
 class AuthService:
     @staticmethod
@@ -71,11 +70,11 @@ class AuthService:
             if user:
                 print(f"[AUTH_SERVICE] Usuario ID: {user.id}, Rol: {user.role}")
                 
-                # Verificar contraseña usando el método del modelo User
+                # Verificar contraseña usando bcrypt
                 password_valid = False
                 try:
-                    # Usar el método check_password del modelo User
-                    password_valid = user.check_password(password)
+                    # Usar bcrypt para verificar contraseña
+                    password_valid = bcrypt.check_password_hash(user.password, password)
                     print(f"[AUTH_SERVICE] Contraseña válida: {password_valid}")
                 except Exception as e:
                     print(f"[AUTH_SERVICE] Error verificando contraseña: {str(e)}")

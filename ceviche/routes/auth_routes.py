@@ -3,7 +3,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from config.extensions import blacklisted_tokens
 from services.auth_service import AuthService
 from services.session_service import SessionService
-from models import User
+from models import User, UserSession
 from utils.decorators import role_required
 
 auth_bp = Blueprint('auth', __name__)
@@ -36,7 +36,7 @@ def register():
             return jsonify({'message': 'Usuario y contraseña son requeridos'}), 400
         
         # Validar que el rol sea válido
-        valid_roles = ['admin', 'waiter', 'kitchen', 'cashier']
+        valid_roles = ['admin', 'waiter', 'cocina', 'cashier']
         if role not in valid_roles:
             return jsonify({'message': f'Rol inválido. Roles válidos: {valid_roles}'}), 400
         
@@ -87,6 +87,12 @@ def login():
         if error:
             print(f"[DEBUG] Error de autenticación: {error}")
             return jsonify({'message': error}), 401
+        
+        # IMPORTANTE: Crear sesión de Flask para compatibilidad con check_*_auth()
+        session['user_id'] = user.id
+        session['username'] = user.username
+        session['role'] = user.role
+        print(f"[DEBUG] Sesión de Flask creada para usuario ID: {user.id}, rol: {user.role}")
         
         # Si llegamos aquí, AuthService ya creó la sesión exitosamente
         print(f"[DEBUG] Login exitoso para usuario: {username}")
@@ -162,6 +168,40 @@ def session_status():
             'valid': False,
             'message': f'Error al verificar sesión: {str(e)}'
         }), 200
+
+@auth_bp.route('/verify-session', methods=['GET'])
+def verify_session():
+    """Verificar si la sesión JWT sigue activa"""
+    try:
+        from flask_jwt_extended import verify_jwt_in_request, get_jwt_identity
+        verify_jwt_in_request()
+        current_user_id = get_jwt_identity()
+        current_user = User.query.get(current_user_id)
+        
+        if not current_user:
+            return jsonify({'success': False, 'sessionActive': False, 'message': 'Usuario no encontrado'}), 401
+            
+        # Verificar si hay una sesión activa en la base de datos
+        active_session = UserSession.query.filter_by(
+            user_id=current_user.id,
+            status='active'
+        ).first()
+        
+        if not active_session:
+            return jsonify({'success': False, 'sessionActive': False, 'message': 'Sesión cerrada por administrador'}), 401
+        
+        return jsonify({
+            'success': True,
+            'sessionActive': True,
+            'user': {
+                'id': current_user.id,
+                'username': current_user.username,
+                'role': current_user.role
+            }
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'success': False, 'sessionActive': False, 'message': f'Token inválido: {str(e)}'}), 401
 
 @auth_bp.route('/profile', methods=['GET'])
 def get_profile():

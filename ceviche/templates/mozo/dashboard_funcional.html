@@ -1,0 +1,373 @@
+{% extends "base.html" %}
+{% block title %}Dashboard Mozo{% endblock %}
+{% block content %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard Mozo - Cevichería</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="container-fluid p-4">
+        <div class="row mb-4">
+            <div class="col-12">
+                <h1 class="text-primary">
+                    <i class="fas fa-utensils"></i> Dashboard Mozo
+                </h1>
+                <div class="alert alert-info">
+                    <strong>Usuario:</strong> <span id="usuario-actual">Cargando...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- CONTADORES DE MESAS -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card text-white bg-success">
+                    <div class="card-body text-center">
+                        <h2 id="contador-libres">0</h2>
+                        <h5>Mesas Libres</h5>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card text-white bg-danger">
+                    <div class="card-body text-center">
+                        <h2 id="contador-ocupadas">0</h2>
+                        <h5>Mesas Ocupadas</h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- LISTA DE MESAS -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h5><i class="fas fa-table"></i> Estado de Mesas</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="mesas-container" style="max-height: 300px; overflow-y: auto;">
+                            <div class="text-center">
+                                <div class="spinner-border" role="status">
+                                    <span class="visually-hidden">Cargando mesas...</span>
+                                </div>
+                                <p>Cargando mesas...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MENÚ DE PRODUCTOS -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-success text-white">
+                        <h5><i class="fas fa-utensils"></i> Menú de Productos</h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Tabs de categorías -->
+                        <ul class="nav nav-tabs" id="menuTabs" role="tablist">
+                            <!-- Se llenarán dinámicamente -->
+                        </ul>
+                        
+                        <!-- Contenido de tabs -->
+                        <div class="tab-content mt-3" id="menuContent">
+                            <div class="text-center">
+                                <div class="spinner-border" role="status">
+                                    <span class="visually-hidden">Cargando menú...</span>
+                                </div>
+                                <p>Cargando menú...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // Variables globales
+    let mesasData = [];
+    let menuData = {};
+
+    // 1. CARGAR PERFIL DE USUARIO
+    function cargarPerfil() {
+        console.log('🔄 Cargando perfil...');
+        
+        fetch('/mozo/profile', {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => {
+            console.log('📡 Respuesta profile:', response.status);
+            return response.json();
+        })
+        .then(data => {
+            console.log('✅ Datos profile:', data);
+            if (data.success && data.user) {
+                document.getElementById('usuario-actual').textContent = 
+                    `${data.user.username} (${data.user.role})`;
+            } else {
+                document.getElementById('usuario-actual').textContent = 'Error al cargar usuario';
+                console.error('❌ Error profile:', data);
+            }
+        })
+        .catch(error => {
+            console.error('❌ Error profile:', error);
+            document.getElementById('usuario-actual').textContent = 'Error de conexión';
+        });
+    }
+
+    // 2. CARGAR MESAS
+    function cargarMesas() {
+        console.log('🔄 Cargando mesas...');
+        
+        fetch('/mozo/tables', {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => {
+            console.log('📡 Respuesta mesas:', response.status);
+            return response.json();
+        })
+        .then(data => {
+            console.log('✅ Datos mesas:', data);
+            mesasData = data;
+            mostrarMesas(data);
+        })
+        .catch(error => {
+            console.error('❌ Error mesas:', error);
+            document.getElementById('mesas-container').innerHTML = 
+                '<div class="alert alert-danger">Error al cargar mesas: ' + error.message + '</div>';
+        });
+    }
+
+    // 3. MOSTRAR MESAS
+    function mostrarMesas(mesas) {
+        console.log('🏗️ Mostrando', mesas.length, 'mesas');
+        
+        const container = document.getElementById('mesas-container');
+        const contadorLibres = document.getElementById('contador-libres');
+        const contadorOcupadas = document.getElementById('contador-ocupadas');
+        
+        let libres = 0;
+        let ocupadas = 0;
+        let html = '<div class="row">';
+        
+        mesas.forEach(mesa => {
+            const numero = mesa.number || mesa.numero || 'N/A';
+            const zona = mesa.zone_name || mesa.zona || 'Sin zona';
+            const piso = mesa.floor_name || mesa.piso || 'Sin piso';
+            const status = mesa.status || 'unknown';
+            
+            // Contar estados
+            if (status === 'libre' || mesa.available === true) {
+                libres++;
+            } else if (status === 'ocupada' || mesa.ocupada === true) {
+                ocupadas++;
+            }
+            
+            // Determinar color y estado
+            let colorClass = 'bg-success text-white';
+            let estadoTexto = 'Libre';
+            let icono = 'fa-table';
+            
+            if (status === 'ocupada' || mesa.ocupada === true) {
+                colorClass = 'bg-danger text-white';
+                estadoTexto = 'Ocupada';
+                icono = 'fa-users';
+            }
+            
+            html += `
+                <div class="col-md-3 col-sm-6 mb-2">
+                    <div class="card ${colorClass}">
+                        <div class="card-body p-2 text-center">
+                            <i class="fas ${icono}"></i>
+                            <strong>Mesa ${numero}</strong><br>
+                            <small>${zona}</small><br>
+                            <small>(${piso})</small><br>
+                            <span class="badge badge-light">${estadoTexto}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        container.innerHTML = html;
+        
+        // Actualizar contadores
+        contadorLibres.textContent = libres;
+        contadorOcupadas.textContent = ocupadas;
+        
+        console.log(`📊 Contadores: ${libres} libres, ${ocupadas} ocupadas`);
+    }
+
+    // 4. CARGAR MENÚ
+    function cargarMenu() {
+        console.log('🔄 Cargando menú...');
+        
+        fetch('/mozo/menu', {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => {
+            console.log('📡 Respuesta menú:', response.status);
+            return response.json();
+        })
+        .then(data => {
+            console.log('✅ Datos menú:', data);
+            mostrarMenu(data);
+        })
+        .catch(error => {
+            console.error('❌ Error menú:', error);
+            document.getElementById('menuContent').innerHTML = 
+                '<div class="alert alert-danger">Error al cargar menú: ' + error.message + '</div>';
+        });
+    }
+
+    // 5. MOSTRAR MENÚ
+    function mostrarMenu(data) {
+        console.log('🏗️ Mostrando menú');
+        
+        const tabsContainer = document.getElementById('menuTabs');
+        const contentContainer = document.getElementById('menuContent');
+        
+        let categories = [];
+        
+        // Determinar formato de datos
+        if (data.success && data.categories) {
+            categories = data.categories;
+        } else if (data.categories) {
+            categories = data.categories;
+        } else if (Array.isArray(data)) {
+            categories = data;
+        } else {
+            console.error('❌ Formato de menú no reconocido:', data);
+            contentContainer.innerHTML = 
+                '<div class="alert alert-warning">Formato de menú no reconocido</div>';
+            return;
+        }
+        
+        console.log('📂 Categorías encontradas:', categories.length);
+        
+        // Crear tabs
+        let tabsHtml = '';
+        let contentHtml = '';
+        
+        categories.forEach((categoria, index) => {
+            const nombre = categoria.name || categoria.nombre || 'Sin nombre';
+            const productos = categoria.products || categoria.productos || [];
+            const activeClass = index === 0 ? 'active' : '';
+            const showClass = index === 0 ? 'show active' : '';
+            
+            console.log(`📂 ${nombre}: ${productos.length} productos`);
+            
+            // Tab header
+            tabsHtml += `
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link ${activeClass}" 
+                            id="tab-${index}" 
+                            data-bs-toggle="tab" 
+                            data-bs-target="#content-${index}" 
+                            type="button" 
+                            role="tab">
+                        ${nombre} (${productos.length})
+                    </button>
+                </li>
+            `;
+            
+            // Tab content
+            let productosHtml = '<div class="row">';
+            
+            if (productos.length === 0) {
+                productosHtml += '<div class="col-12"><div class="alert alert-info">No hay productos en esta categoría</div></div>';
+            } else {
+                productos.forEach(producto => {
+                    const nombreProd = producto.name || producto.nombre || 'Sin nombre';
+                    const precio = producto.price || producto.precio || '0.00';
+                    const descripcion = producto.description || producto.descripcion || 'Sin descripción';
+                    
+                    productosHtml += `
+                        <div class="col-md-4 col-sm-6 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h6 class="card-title">${nombreProd}</h6>
+                                    <p class="card-text small">${descripcion}</p>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="text-success fw-bold">S/. ${precio}</span>
+                                        <button class="btn btn-sm btn-primary">
+                                            <i class="fas fa-plus"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            
+            productosHtml += '</div>';
+            
+            contentHtml += `
+                <div class="tab-pane fade ${showClass}" 
+                     id="content-${index}" 
+                     role="tabpanel">
+                    ${productosHtml}
+                </div>
+            `;
+        });
+        
+        tabsContainer.innerHTML = tabsHtml;
+        contentContainer.innerHTML = contentHtml;
+        
+        console.log('✅ Menú mostrado correctamente');
+    }
+
+    // 6. INICIALIZAR TODO
+    function inicializar() {
+        console.log('🚀 Inicializando dashboard...');
+        
+        // Cargar datos iniciales
+        cargarPerfil();
+        cargarMesas();
+        cargarMenu();
+        
+        // Actualizar cada 30 segundos
+        setInterval(() => {
+            console.log('🔄 Actualizando datos...');
+            cargarMesas();
+        }, 30000);
+    }
+
+    // Inicializar cuando se cargue la página
+    document.addEventListener('DOMContentLoaded', inicializar);
+    
+    // También funcionar si se ejecuta después
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', inicializar);
+    } else {
+        inicializar();
+    }
+    </script>
+</body>
+</html>
+{% endblock %}

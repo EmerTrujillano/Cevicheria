@@ -952,8 +952,148 @@
         // Detener monitoreo cuando la página se cierre
         window.addEventListener('beforeunload', stopSessionMonitoring);
         
-        // Inicializar detección de actividad cuando el DOM esté listo
-        document.addEventListener('DOMContentLoaded', setupActivityDetection);
+        // Función global para verificar si la sesión sigue siendo válida
+        function verificarSesionGlobal() {
+            const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+            if (!token) {
+                return;
+            }
+            
+            fetch('/api/auth/verify-session', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => {
+                if (response.status === 401) {
+                    // Sesión inválida o cerrada remotamente
+                    alert('Tu sesión ha sido cerrada por un administrador. Serás redirigido al login.');
+                    localStorage.removeItem('authToken');
+                    sessionStorage.removeItem('authToken');
+                    window.location.href = '/login';
+                    return;
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data && !data.valid) {
+                    // Sesión inválida
+                    alert('Tu sesión ha expirado o fue cerrada. Serás redirigido al login.');
+                    localStorage.removeItem('authToken');
+                    sessionStorage.removeItem('authToken');
+                    window.location.href = '/login';
+                }
+            })
+            .catch(error => {
+                console.error('Error verificando sesión:', error);
+                // No hacer nada en caso de error de red para evitar desconexiones innecesarias
+            });
+        }
+        
+        // SISTEMA DE AUTOLOGOUT DE 5 MINUTOS CON PROMPT DE 2 MINUTOS
+        let autologoutTimer = null;
+        let warningTimer = null;
+        let isWarningShown = false;
+        const AUTOLOGOUT_TIME = 5 * 60 * 1000; // 5 minutos
+        const WARNING_TIME = 3 * 60 * 1000; // Mostrar warning a los 3 minutos (2 min antes del logout)
+
+        function resetAutologoutTimer() {
+            // Limpiar timers existentes
+            if (autologoutTimer) clearTimeout(autologoutTimer);
+            if (warningTimer) clearTimeout(warningTimer);
+            isWarningShown = false;
+            
+            // Ocultar warning si está visible
+            hideInactivityWarning();
+            
+            // Solo activar si hay token y no estamos en login
+            const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+            if (!token || window.location.pathname === '/login') return;
+            
+            // Timer para mostrar warning
+            warningTimer = setTimeout(() => {
+                showInactivityWarning();
+            }, WARNING_TIME);
+            
+            // Timer para logout automático
+            autologoutTimer = setTimeout(() => {
+                performAutologout();
+            }, AUTOLOGOUT_TIME);
+        }
+
+        function showInactivityWarning() {
+            if (isWarningShown) return;
+            isWarningShown = true;
+            
+            const warningHtml = `
+                <div id="inactivityWarning" class="alert alert-warning alert-dismissible position-fixed" 
+                     style="top: 20px; right: 20px; z-index: 9999; min-width: 350px;">
+                    <h6><i class="fas fa-clock me-2"></i>Sesión por expirar</h6>
+                    <p class="mb-2">Tu sesión expirará en <strong>2 minutos</strong> por inactividad.</p>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-success btn-sm" onclick="extendSession()">
+                            <i class="fas fa-refresh me-1"></i>Mantener sesión
+                        </button>
+                        <button class="btn btn-secondary btn-sm" onclick="hideInactivityWarning()">
+                            <i class="fas fa-times me-1"></i>Cerrar
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', warningHtml);
+        }
+
+        function hideInactivityWarning() {
+            const warning = document.getElementById('inactivityWarning');
+            if (warning) {
+                warning.remove();
+            }
+            isWarningShown = false;
+        }
+
+        function extendSession() {
+            hideInactivityWarning();
+            resetAutologoutTimer();
+            console.log('✅ Sesión extendida');
+        }
+
+        function performAutologout() {
+            console.log('🚪 Sesión cerrada por inactividad');
+            
+            // Limpiar datos
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('currentUser');
+            sessionStorage.removeItem('authToken');
+            
+            // Mostrar mensaje
+            alert('Tu sesión ha expirado por inactividad. Serás redirigido al login.');
+            
+            // Redirigir al login
+            window.location.href = '/login';
+        }
+
+        // Eventos que reinician el timer (actividad del usuario)
+        const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+        
+        function setupActivityDetection() {
+            activityEvents.forEach(event => {
+                document.addEventListener(event, resetAutologoutTimer, true);
+            });
+            
+            // Inicializar timer
+            resetAutologoutTimer();
+        }
+
+        // Inicializar cuando el DOM esté listo
+        document.addEventListener('DOMContentLoaded', function() {
+            const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+            if (token && window.location.pathname !== '/login') {
+                setupActivityDetection();
+                console.log('🕐 Sistema de autologout activado: 5 minutos');
+            }
+        });
     </script>
 
     <!-- Bootstrap JS -->

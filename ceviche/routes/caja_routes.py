@@ -13,7 +13,7 @@ def check_caja_auth():
         return False
     
     user = User.query.get(session['user_id'])
-    if not user or user.role != 'cashier':
+    if not user or user.role != 'cajero':  # Cambiado de 'cashier' a 'cajero'
         return False
     
     return True

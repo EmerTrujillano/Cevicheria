@@ -11,7 +11,7 @@ ROLE_PERMISSIONS = {
         'areas': ['mesas', 'pedidos', 'menu'],
         'description': 'Mozo - Gestión de mesas y pedidos'
     },
-    'kitchen': {
+    'cocina': {
         'areas': ['cocina', 'pedidos'],
         'description': 'Cocina - Gestión de preparación de pedidos'
     },
@@ -33,7 +33,7 @@ SYSTEM_AREAS = {
     },
     'pedidos': {
         'description': 'Gestión de órdenes y comandas',
-        'default_roles': ['waiter', 'kitchen', 'admin']
+        'default_roles': ['waiter', 'cocina', 'admin']
     },
     'menu': {
         'description': 'Visualización del menú (público y staff)',
@@ -41,7 +41,7 @@ SYSTEM_AREAS = {
     },
     'cocina': {
         'description': 'Gestión de preparación de platos',
-        'default_roles': ['kitchen', 'admin']
+        'default_roles': ['cocina', 'admin']
     },
     'caja': {
         'description': 'Procesamiento de pagos',

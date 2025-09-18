@@ -48,18 +48,33 @@
 let estacionUsuario = '';
 
 function cargarEstacionUsuario() {
-    fetch('/cocina/station')
+    fetch('/cocina/profile')
         .then(response => response.json())
         .then(data => {
-            estacionUsuario = data.estacion;
-            document.getElementById('estacion-usuario').textContent = estacionUsuario;
-            cargarPedidosKanban();
+            if (data.success || data.user) {
+                const user = data.user || data;
+                const estacion = user.estacion || 'General';
+                estacionUsuario = estacion;
+                document.getElementById('estacion-usuario').textContent = estacion.charAt(0).toUpperCase() + estacion.slice(1);
+                cargarPedidosKanban();
+            } else {
+                // Si falla la API, usar estación general
+                estacionUsuario = 'General';
+                document.getElementById('estacion-usuario').textContent = 'General';
+                cargarPedidosKanban();
+            }
         })
-        .catch(error => console.error('Error:', error));
+        .catch(error => {
+            console.error('Error cargando estación:', error);
+            // Continuar con estación general
+            estacionUsuario = 'General';
+            document.getElementById('estacion-usuario').textContent = 'General';
+            cargarPedidosKanban();
+        });
 }
 
 function cargarPedidosKanban() {
-    fetch('/cocina/kanban')
+    fetch('/cocina/api/kanban')
         .then(response => response.json())
         .then(data => {
             // Limpiar columnas
@@ -69,15 +84,21 @@ function cargarPedidosKanban() {
             document.getElementById('entregado-pedidos').innerHTML = '';
             
             // Llenar columnas con pedidos
-            data.forEach(item => {
-                const pedidoElement = crearElementoPedido(item);
-                const columna = getColumnaByEstado(item.estado);
-                if (columna) {
-                    columna.appendChild(pedidoElement);
-                }
-            });
+            if (Array.isArray(data)) {
+                data.forEach(item => {
+                    const pedidoElement = crearElementoPedido(item);
+                    const columna = getColumnaByEstado(item.estado);
+                    if (columna) {
+                        columna.appendChild(pedidoElement);
+                    }
+                });
+            } else {
+                console.error('Datos de kanban no válidos:', data);
+            }
         })
-        .catch(error => console.error('Error:', error));
+        .catch(error => {
+            console.error('Error cargando kanban:', error);
+        });
 }
 
 function crearElementoPedido(item) {
@@ -89,7 +110,9 @@ function crearElementoPedido(item) {
         <div class="card-body p-2">
             <small><strong>Mesa ${item.mesa_numero}</strong></small><br>
             <small>${item.producto_nombre}</small><br>
-            <small>Cant: ${item.cantidad}</small>
+            <small>Cant: ${item.cantidad}</small><br>
+            <small class="text-muted">${item.tiempo_creacion}</small>
+            ${item.modificaciones ? `<br><small class="text-warning">Mod: ${item.modificaciones}</small>` : ''}
         </div>`;
     return div;
 }
@@ -100,7 +123,7 @@ function getColumnaByEstado(estado) {
         case 'preparando': return document.getElementById('preparacion-pedidos');
         case 'listo': return document.getElementById('listo-pedidos');
         case 'entregado': return document.getElementById('entregado-pedidos');
-        default: return null;
+        default: return document.getElementById('cola-pedidos'); // Por defecto en cola
     }
 }
 

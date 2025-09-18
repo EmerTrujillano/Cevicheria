@@ -40,14 +40,136 @@ def menu_management():
         return redirect(url_for('main.login_page'))
     return render_template('admin/menu_management.html')
 
-@admin_bp.route('/api/real-time-status')
-def get_real_time_status():
-    """Obtener estado en tiempo real del local"""
+@admin_bp.route('/api/dashboard-stats')
+def get_dashboard_stats():
+    """Obtener estadísticas para el dashboard del admin"""
     if not check_admin_auth():
         return jsonify({'success': False, 'message': 'No autorizado'}), 401
     
     try:
-        # Estado de mesas con detalles
+        # Contar mesas ocupadas
+        mesas_ocupadas = Table.query.filter_by(status='ocupada').count()
+        mesas_totales = Table.query.count()
+        mesas_libres = mesas_totales - mesas_ocupadas
+        
+        # Obtener sesiones activas con detalles
+        active_sessions = UserSession.query.filter_by(is_active=True).join(User).all()
+        
+        sesiones_activas = []
+        usuarios_por_rol = {'admin': 0, 'mozo': 0, 'cocina': 0, 'cajero': 0}
+        
+        for user_session in active_sessions:
+            user = user_session.user
+            
+            # Calcular tiempo de sesión
+            tiempo_sesion = (datetime.utcnow() - user_session.created_at).total_seconds()
+            tiempo_str = f"{int(tiempo_sesion // 60)}m"
+            if tiempo_sesion > 3600:
+                horas = int(tiempo_sesion // 3600)
+                minutos = int((tiempo_sesion % 3600) // 60)
+                tiempo_str = f"{horas}h {minutos}m"
+            
+            sesiones_activas.append({
+                'session_id': user_session.id,
+                'user_id': user.id,
+                'username': user.username,
+                'role': user.role,
+                'created_at': user_session.created_at.strftime('%H:%M'),
+                'tiempo_activo': tiempo_str,
+                'last_activity': user_session.last_activity.strftime('%H:%M') if user_session.last_activity else 'N/A',
+                'ip_address': user_session.ip_address or 'N/A'
+            })
+            
+            # Contar por rol
+            if user.role in usuarios_por_rol:
+                usuarios_por_rol[user.role] += 1
+        
+        # Pedidos pendientes
+        pedidos_pendientes = Order.query.filter(
+            Order.status.in_(['pending', 'in_kitchen'])
+        ).count()
+        
+        # Pedidos de hoy
+        from datetime import date
+        today = date.today()
+        pedidos_hoy = Order.query.filter(
+            db.func.date(Order.created_at) == today
+        ).count()
+        
+        return jsonify({
+            'success': True,
+            'stats': {
+                'mesas': {
+                    'ocupadas': mesas_ocupadas,
+                    'libres': mesas_libres,
+                    'total': mesas_totales
+                },
+                'sesiones': {
+                    'total_activas': len(sesiones_activas),
+                    'por_rol': usuarios_por_rol,
+                    'detalle': sesiones_activas
+                },
+                'pedidos': {
+                    'pendientes': pedidos_pendientes,
+                    'hoy': pedidos_hoy
+                }
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_bp.route('/api/force-logout', methods=['POST'])
+def force_logout_user():
+    """Forzar logout de un usuario específico"""
+    if not check_admin_auth():
+        return jsonify({'success': False, 'message': 'No autorizado'}), 401
+    
+    try:
+        data = request.get_json()
+        session_id = data.get('session_id')
+        username = data.get('username')
+        
+        if not session_id and not username:
+            return jsonify({'success': False, 'message': 'Se requiere session_id o username'}), 400
+        
+        # Buscar sesiones a cerrar
+        sessions_to_close = []
+        
+        if session_id:
+            # Cerrar sesión específica
+            user_session = UserSession.query.get(session_id)
+            if user_session:
+                sessions_to_close.append(user_session)
+        
+        if username:
+            # Cerrar todas las sesiones del usuario
+            user = User.query.filter_by(username=username).first()
+            if user:
+                user_sessions = UserSession.query.filter_by(user_id=user.id, is_active=True).all()
+                sessions_to_close.extend(user_sessions)
+        
+        if not sessions_to_close:
+            return jsonify({'success': False, 'message': 'No se encontraron sesiones activas'}), 404
+        
+        # Cerrar sesiones
+        closed_count = 0
+        for user_session in sessions_to_close:
+            user_session.is_active = False
+            user_session.ended_at = datetime.utcnow()
+            user_session.end_reason = 'admin_force_logout'
+            closed_count += 1
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Se cerraron {closed_count} sesión(es)',
+            'closed_sessions': closed_count
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
         mesas_ocupadas = 0
         mesas_disponibles = 0
         mesas_detalle = []
@@ -102,12 +224,25 @@ def get_real_time_status():
         try:
             usuarios_activos = UserSession.query.filter_by(is_active=True).count()
             
-            # Usuarios por rol
+            # Usuarios por rol (con debug)
             active_sessions = UserSession.query.filter_by(is_active=True).join(User).all()
+            print(f"[DEBUG] Sesiones activas encontradas: {len(active_sessions)}")
+            
             for session in active_sessions:
                 role = session.user.role
-                if role in usuarios_por_rol:
-                    usuarios_por_rol[role] += 1
+                print(f"[DEBUG] Usuario {session.user.username} con rol: {role}")
+                
+                # Mapear roles a los nombres esperados
+                if role == 'admin':
+                    usuarios_por_rol['admin'] += 1
+                elif role == 'mozo':
+                    usuarios_por_rol['mozo'] += 1
+                elif role == 'cocina':
+                    usuarios_por_rol['cocina'] += 1
+                elif role == 'cajero':
+                    usuarios_por_rol['cajero'] += 1
+                    
+            print(f"[DEBUG] Conteo final por rol: {usuarios_por_rol}")
         except Exception as e:
             print(f"Error en usuarios: {e}")
         
@@ -168,10 +303,11 @@ def session_monitoring():
 
 # APIs para gestión de usuarios
 @admin_bp.route('/api/users', methods=['GET'])
-@jwt_required()
-@role_required('admin')
 def get_users():
-    """Obtener lista de todos los usuarios"""
+    """Obtener lista de todos los usuarios (usando autenticación por sesión)"""
+    if not check_admin_auth():
+        return jsonify({'success': False, 'message': 'No autorizado'}), 401
+        
     try:
         users = User.query.all()
         users_data = []
@@ -190,6 +326,7 @@ def get_users():
             'data': users_data
         })
     except Exception as e:
+        print(f"Error obteniendo usuarios: {e}")
         return jsonify({
             'success': False,
             'message': f'Error al obtener usuarios: {str(e)}'
@@ -382,20 +519,26 @@ def close_session(session_id):
         }), 500
 
 @admin_bp.route('/api/users/<int:user_id>/close-sessions', methods=['POST'])
-@jwt_required()
-@role_required('admin')
 def close_user_sessions(user_id):
-    """Cerrar todas las sesiones de un usuario"""
+    """Cerrar todas las sesiones de un usuario (usando autenticación por sesión)"""
+    if not check_admin_auth():
+        return jsonify({'success': False, 'message': 'No autorizado'}), 401
+        
     try:
         user = User.query.get_or_404(user_id)
+        
+        # Cerrar todas las sesiones del usuario de forma inmediata
+        from services.session_service import SessionService
         closed_count = SessionService.close_user_sessions(user_id)
         
         return jsonify({
             'success': True,
-            'message': f'Se cerraron {closed_count} sesiones de {user.username}'
+            'message': f'Se cerraron {closed_count} sesiones de {user.username}',
+            'closed_count': closed_count
         })
         
     except Exception as e:
+        print(f"Error cerrando sesiones de usuario {user_id}: {e}")
         return jsonify({
             'success': False,
             'message': f'Error al cerrar sesiones: {str(e)}'

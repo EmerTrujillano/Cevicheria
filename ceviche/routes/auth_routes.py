@@ -114,6 +114,47 @@ def login():
         print(f"[DEBUG] Traceback completo: {traceback.format_exc()}")
         return jsonify({'message': f'Error interno del servidor: {str(e)}'}), 500
 
+@auth_bp.route('/check-session', methods=['GET'])
+def check_session():
+    """Verificar si la sesión actual sigue siendo válida"""
+    try:
+        if 'user_id' not in session:
+            return jsonify({'valid': False, 'reason': 'no_session'}), 401
+        
+        user_id = session['user_id']
+        user = User.query.get(user_id)
+        
+        if not user:
+            return jsonify({'valid': False, 'reason': 'user_not_found'}), 401
+        
+        # Verificar si hay una sesión activa en la base de datos
+        active_session = UserSession.query.filter_by(
+            user_id=user_id,
+            is_active=True
+        ).first()
+        
+        if not active_session:
+            # La sesión fue cerrada remotamente
+            session.clear()
+            return jsonify({'valid': False, 'reason': 'session_closed_remotely'}), 401
+        
+        # Actualizar última actividad
+        active_session.last_activity = datetime.utcnow()
+        db.session.commit()
+        
+        return jsonify({
+            'valid': True,
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'role': user.role
+            }
+        })
+        
+    except Exception as e:
+        print(f"Error verificando sesión: {e}")
+        return jsonify({'valid': False, 'reason': 'error'}), 500
+
 @auth_bp.route('/logout', methods=['POST'])
 def logout():
     """Logout del usuario - Terminar sesión y agregar token a blacklist"""

@@ -10,7 +10,15 @@ class Order(db.Model):
     waiter_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)  # ID del mozo
     customer_name = db.Column(db.String(100))  # Opcional para identificar al cliente
     order_type = db.Column(db.String(20), nullable=False, default='dine_in')  # dine_in, takeaway, delivery, private_event
-    status = db.Column(db.String(20), nullable=False, default='pending')  # pending, in_kitchen, ready, served, paid, cancelled
+    status = db.Column(db.String(20), nullable=False, default='pending')  # pending, in_kitchen, ready, served, completed, cancelled
+    
+    # Campos de pago
+    payment_status = db.Column(db.String(20), nullable=False, default='pending')  # pending, paid, refunded
+    payment_method = db.Column(db.String(20))  # efectivo, tarjeta, yapeplin
+    amount_received = db.Column(db.Numeric(10,2))  # Monto recibido
+    change_given = db.Column(db.Numeric(10,2))  # Cambio entregado
+    cashier_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # ID del cajero
+    
     total_amount = db.Column(db.Numeric(10,2), nullable=False, default=0.00)
     special_instructions = db.Column(db.Text)  # Instrucciones especiales del cliente
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -20,6 +28,8 @@ class Order(db.Model):
     # Relaciones
     order_items = db.relationship('OrderItem', backref='order', lazy=True, cascade='all, delete-orphan')
     payments = db.relationship('Payment', backref='order', lazy=True, cascade='all, delete-orphan')
+    
+    # No definir relaciones adicionales aquí para evitar conflictos con backref existentes
     
     def __repr__(self):
         return f'<Order {self.order_number}>'

@@ -36,9 +36,10 @@ def create_app(config_name=None):
         from routes.mozo_routes import mozo_bp
         from routes.cocina_routes import cocina_bp
         from routes.caja_routes import caja_bp
+        from routes.cashier_routes import cashier_bp
     except ImportError as e:
         print(f"⚠️ Algunos blueprints no disponibles: {e}")
-        admin_bp = mozo_bp = cocina_bp = caja_bp = None
+        admin_bp = mozo_bp = cocina_bp = caja_bp = cashier_bp = None
     
     # Blueprint para QR único del restaurante (si existe)
     try:
@@ -59,6 +60,8 @@ def create_app(config_name=None):
         app.register_blueprint(cocina_bp)
     if caja_bp:
         app.register_blueprint(caja_bp)
+    if cashier_bp:
+        app.register_blueprint(cashier_bp)
     
     # Blueprint para QR único del restaurante (si existe)
     if restaurant_qr_bp:

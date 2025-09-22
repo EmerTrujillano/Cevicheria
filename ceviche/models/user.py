@@ -30,7 +30,8 @@ class User(db.Model):
     
     # Nuevas relaciones para cevichería
     waiter_orders = db.relationship('Order', foreign_keys='Order.waiter_id', backref='waiter', lazy=True)
-    cashier_payments = db.relationship('Payment', foreign_keys='Payment.cashier_id', backref='cashier', lazy=True)
+    cashier_orders = db.relationship('Order', foreign_keys='Order.cashier_id', backref='cashier', lazy=True)
+    cashier_payments = db.relationship('Payment', foreign_keys='Payment.cashier_id', backref='cashier_payments_rel', lazy=True)
     approved_reviews = db.relationship('Review', foreign_keys='Review.approved_by', backref='approver', lazy=True)
 
     def __repr__(self):

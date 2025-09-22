@@ -159,26 +159,38 @@ def check_session():
 def logout():
     """Logout del usuario - Terminar sesión y agregar token a blacklist"""
     try:
-        from flask_jwt_extended import verify_jwt_in_request, get_jwt, get_jwt_identity
-        verify_jwt_in_request()
+        print(f"[AUTH] Iniciando logout con método: {request.method}")
         
-        current_user_id = get_jwt_identity()
-        jti = get_jwt()['jti']
+        # Intentar obtener el JWT si existe
+        current_user_id = None
+        jti = None
         
-        # Agregar token a blacklist
-        blacklisted_tokens.add(jti)
+        try:
+            from flask_jwt_extended import verify_jwt_in_request, get_jwt, get_jwt_identity
+            verify_jwt_in_request(optional=True)  # No requerir JWT
+            current_user_id = get_jwt_identity()
+            if current_user_id:
+                jti = get_jwt()['jti']
+                # Agregar token a blacklist
+                blacklisted_tokens.add(jti)
+                print(f"[AUTH] JWT token blacklisted para usuario ID: {current_user_id}")
+        except:
+            # No hay JWT válido, usar sesión web
+            current_user_id = session.get('user_id')
+            print(f"[AUTH] Usando sesión web para usuario ID: {current_user_id}")
         
         # Terminar sesión usando el nuevo sistema
         session_id = session.get('session_id')
         if session_id:
             SessionService.invalidate_session(session_id, 'manual_logout')
+            print(f"[AUTH] Sesión invalidada: {session_id}")
         
-        # Limpiar sesión web
+        # Limpiar sesión web completamente
         session.clear()
         
         print(f"[AUTH] Logout exitoso para usuario ID: {current_user_id}")
         
-        # Si es GET request (desde admin dashboard), redirigir al login
+        # Si es GET request (desde dashboard), redirigir al login
         if request.method == 'GET':
             return redirect('/auth/login')
         else:
@@ -187,10 +199,13 @@ def logout():
         
     except Exception as e:
         print(f"[AUTH] Error en logout: {str(e)}")
+        # Siempre limpiar la sesión, incluso si hay error
+        session.clear()
+        
         if request.method == 'GET':
             return redirect('/auth/login')
         else:
-            return jsonify({'message': f'Error de autenticación: {str(e)}'}), 401
+            return jsonify({'message': 'Logout completado con advertencias'}), 200
 
 @auth_bp.route('/session-status', methods=['GET'])
 def session_status():

@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, session
+from flask import Blueprint, request, jsonify, session, redirect
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from config.extensions import blacklisted_tokens
 from services.auth_service import AuthService
@@ -155,7 +155,7 @@ def check_session():
         print(f"Error verificando sesión: {e}")
         return jsonify({'valid': False, 'reason': 'error'}), 500
 
-@auth_bp.route('/logout', methods=['POST'])
+@auth_bp.route('/logout', methods=['GET', 'POST'])
 def logout():
     """Logout del usuario - Terminar sesión y agregar token a blacklist"""
     try:
@@ -177,11 +177,20 @@ def logout():
         session.clear()
         
         print(f"[AUTH] Logout exitoso para usuario ID: {current_user_id}")
-        return jsonify({'message': 'Logout exitoso'}), 200
+        
+        # Si es GET request (desde admin dashboard), redirigir al login
+        if request.method == 'GET':
+            return redirect('/auth/login')
+        else:
+            # Si es POST request (AJAX), devolver JSON
+            return jsonify({'message': 'Logout exitoso'}), 200
         
     except Exception as e:
         print(f"[AUTH] Error en logout: {str(e)}")
-        return jsonify({'message': f'Error de autenticación: {str(e)}'}), 401
+        if request.method == 'GET':
+            return redirect('/auth/login')
+        else:
+            return jsonify({'message': f'Error de autenticación: {str(e)}'}), 401
 
 @auth_bp.route('/session-status', methods=['GET'])
 def session_status():

@@ -6,6 +6,9 @@ from utils.decorators import role_required
 from services.session_service import SessionService
 from datetime import datetime
 from werkzeug.security import generate_password_hash
+from werkzeug.utils import secure_filename
+import os
+import uuid
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
@@ -569,6 +572,7 @@ def get_productos():
                 'name': producto.name,
                 'description': producto.description,
                 'ingredients': producto.ingredients,
+                'image_url': producto.image_url,
                 'price': float(producto.price) if producto.price else 0,
                 'tags': producto.tags,
                 'category_id': producto.category_id,
@@ -596,6 +600,7 @@ def crear_producto():
         name = request.form.get('name')
         description = request.form.get('description', '')
         ingredients = request.form.get('ingredients', '')
+        image_url = request.form.get('image_url', '')
         price = request.form.get('price')
         tags = request.form.get('tags', '')
         category_id = request.form.get('category_id')
@@ -636,6 +641,7 @@ def crear_producto():
             name=name.strip(),
             description=description.strip(),
             ingredients=ingredients.strip(),
+            image_url=image_url.strip() if image_url else None,
             price=price,
             tags=tags.strip(),
             category_id=int(category_id),
@@ -680,6 +686,7 @@ def actualizar_producto(producto_id):
         name = request.form.get('name')
         description = request.form.get('description', '')
         ingredients = request.form.get('ingredients', '')
+        image_url = request.form.get('image_url', '')
         price = request.form.get('price')
         tags = request.form.get('tags', '')
         category_id = request.form.get('category_id')
@@ -718,6 +725,7 @@ def actualizar_producto(producto_id):
         producto.name = name.strip()
         producto.description = description.strip()
         producto.ingredients = ingredients.strip()
+        producto.image_url = image_url.strip() if image_url else None
         producto.price = price
         producto.tags = tags.strip()
         producto.preparation_time = preparation_time
@@ -764,4 +772,60 @@ def eliminar_producto(producto_id):
     except Exception as e:
         db.session.rollback()
         print(f"Error eliminando producto: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+# Configuración para upload de imágenes
+UPLOAD_FOLDER = 'static/uploads/images'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+
+def allowed_file(filename):
+    """Verificar si la extensión del archivo está permitida"""
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+@admin_bp.route('/upload-image', methods=['POST'])
+def upload_image():
+    """Subir imagen de producto"""
+    if not check_admin_auth():
+        return jsonify({'success': False, 'message': 'No autorizado'}), 401
+    
+    try:
+        if 'image' not in request.files:
+            return jsonify({'success': False, 'message': 'No se seleccionó archivo'}), 400
+        
+        file = request.files['image']
+        if file.filename == '':
+            return jsonify({'success': False, 'message': 'No se seleccionó archivo'}), 400
+        
+        if file and allowed_file(file.filename):
+            # Generar nombre único para evitar conflictos
+            file_extension = file.filename.rsplit('.', 1)[1].lower()
+            unique_filename = f"{uuid.uuid4().hex}.{file_extension}"
+            
+            # Crear directorio si no existe
+            upload_path = os.path.join(os.getcwd(), UPLOAD_FOLDER)
+            os.makedirs(upload_path, exist_ok=True)
+            
+            # Guardar archivo
+            file_path = os.path.join(upload_path, unique_filename)
+            file.save(file_path)
+            
+            # URL relativa para la base de datos
+            image_url = f"/static/uploads/images/{unique_filename}"
+            
+            print(f"[ADMIN] Imagen subida: {image_url}")
+            
+            return jsonify({
+                'success': True, 
+                'image_url': image_url,
+                'message': 'Imagen subida exitosamente'
+            })
+        else:
+            return jsonify({
+                'success': False, 
+                'message': 'Tipo de archivo no permitido. Use: PNG, JPG, JPEG, GIF, WEBP'
+            }), 400
+    
+    except Exception as e:
+        print(f"Error subiendo imagen: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500

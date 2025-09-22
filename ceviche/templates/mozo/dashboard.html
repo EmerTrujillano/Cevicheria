@@ -885,9 +885,91 @@
         }
     }
     
-    function viewTableOrder(tableId, tableNumber) {
-        // Por ahora solo mostrar info, después se puede expandir
-        alert(`Ver pedido de Mesa ${tableNumber}\n(Funcionalidad en desarrollo)`);
+    async function viewTableOrder(tableId, tableNumber) {
+        try {
+            const response = await fetch(`/mozo/api/mesa/${tableId}/pedido`);
+            const data = await response.json();
+            
+            if (data.success && data.pedido) {
+                const pedido = data.pedido;
+                let itemsHtml = pedido.items.map(item => `
+                    <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                        <div>
+                            <strong>${item.producto}</strong> x${item.cantidad}
+                            <div class="small text-muted">${item.modificaciones || ''}</div>
+                        </div>
+                        <span class="badge bg-${getStatusBadgeColor(item.estado)}">${getStatusText(item.estado)}</span>
+                    </div>
+                `).join('');
+                
+                const modalHtml = `
+                    <div class="modal fade" id="pedidoModal" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Pedido Mesa ${tableNumber}</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="mb-3">
+                                        <strong>Estado:</strong> <span class="badge bg-${getStatusBadgeColor(pedido.estado)}">${getStatusText(pedido.estado)}</span>
+                                    </div>
+                                    <div class="mb-3">
+                                        <strong>Hora de pedido:</strong> ${pedido.hora}
+                                    </div>
+                                    <div class="mb-3">
+                                        <strong>Total:</strong> S/. ${pedido.total.toFixed(2)}
+                                    </div>
+                                    <h6>Items:</h6>
+                                    ${itemsHtml}
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Remover modal anterior si existe
+                const existingModal = document.getElementById('pedidoModal');
+                if (existingModal) {
+                    existingModal.remove();
+                }
+                
+                // Agregar modal al DOM
+                document.body.insertAdjacentHTML('beforeend', modalHtml);
+                
+                // Mostrar modal
+                const modal = new bootstrap.Modal(document.getElementById('pedidoModal'));
+                modal.show();
+            } else {
+                alert('No se encontró pedido para esta mesa');
+            }
+        } catch (error) {
+            console.error('Error obteniendo pedido:', error);
+            alert('Error al obtener información del pedido');
+        }
+    }
+    
+    function getStatusBadgeColor(estado) {
+        const colors = {
+            'pending': 'warning',
+            'preparing': 'info', 
+            'ready': 'success',
+            'served': 'primary'
+        };
+        return colors[estado] || 'secondary';
+    }
+    
+    function getStatusText(estado) {
+        const texts = {
+            'pending': 'Pendiente',
+            'preparing': 'Preparando',
+            'ready': 'Listo',
+            'served': 'Entregado'
+        };
+        return texts[estado] || estado;
     }
 
     async function sendToKitchen() {

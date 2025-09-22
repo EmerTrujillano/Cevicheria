@@ -1,130 +1,382 @@
 ﻿{% extends "base.html" %}
 {% block title %}Cocina - Cevichería{% endblock %}
 {% block content %}
-<div class="container py-4">
-    <h1>Panel de Cocina</h1>
-    <p>Tablero Kanban por estaciones</p>
-    <div class="alert alert-info">
-        <strong>Estación:</strong> <span id="estacion-usuario">Cargando...</span>
+<style>
+    /* Estilos responsive para móvil */
+    @media (max-width: 768px) {
+        .container-fluid {
+            padding: 0.5rem;
+        }
+        .accordion-button {
+            font-size: 0.9rem;
+            padding: 0.5rem;
+        }
+        .card-body {
+            padding: 0.5rem;
+        }
+        .btn-sm {
+            font-size: 0.8rem;
+            padding: 0.3rem 0.5rem;
+        }
+        .badge {
+            font-size: 0.7rem;
+        }
+        .accordion-header button {
+            flex-direction: column;
+            text-align: left;
+        }
+    }
+    
+    .mesa-acordeon {
+        margin-bottom: 1rem;
+    }
+    
+    .plato-card {
+        transition: all 0.3s ease;
+    }
+    
+    .plato-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1><i class="fas fa-utensils"></i> Panel de Cocina</h1>
+            <p class="text-muted">Pedidos organizados por mesa</p>
+        </div>
+        <div>
+            <span class="badge bg-info fs-6 me-2">Estación: <span id="estacion-usuario">Cargando...</span></span>
+            <a href="/auth/logout" class="btn btn-outline-danger">
+                <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+            </a>
+        </div>
     </div>
+
+    <!-- Filtros rápidos -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body py-2">
+                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                        <span class="text-muted me-2 d-none d-md-block">Filtrar:</span>
+                        <div class="d-flex flex-wrap gap-1 flex-grow-1">
+                            <button class="btn btn-sm btn-outline-secondary active flex-fill" onclick="filtrarEstado('todos')" id="filter-todos">
+                                <i class="fas fa-list"></i> <span class="d-none d-sm-inline">Todos</span>
+                            </button>
+                            <button class="btn btn-sm btn-outline-warning flex-fill" onclick="filtrarEstado('pendiente')" id="filter-pendiente">
+                                <i class="fas fa-clock"></i> <span class="d-none d-sm-inline">Pendientes</span>
+                            </button>
+                            <button class="btn btn-sm btn-outline-info flex-fill" onclick="filtrarEstado('preparando')" id="filter-preparando">
+                                <i class="fas fa-fire"></i> <span class="d-none d-sm-inline">Preparando</span>
+                            </button>
+                            <button class="btn btn-sm btn-outline-success flex-fill" onclick="filtrarEstado('listo')" id="filter-listo">
+                                <i class="fas fa-check"></i> <span class="d-none d-sm-inline">Listos</span>
+                            </button>
+                        </div>
+                        <div class="mt-2 mt-md-0">
+                            <button class="btn btn-sm btn-primary" onclick="cargarPedidos()">
+                                <i class="fas fa-sync"></i> <span class="d-none d-sm-inline">Actualizar</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contenedor de mesas con acordeones -->
     <div class="row">
-        <div class="col-md-3">
-            <div class="card">
-                <div class="card-header bg-secondary text-white">En Cola</div>
-                <div class="card-body" id="cola-pedidos">
-                    <!-- Pedidos en cola -->
-                </div>
+        <div class="col-12">
+            <div id="mesas-container" class="accordion">
+                <!-- Las mesas se cargarán aquí dinámicamente -->
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card">
-                <div class="card-header bg-warning">En Preparación</div>
-                <div class="card-body" id="preparacion-pedidos">
-                    <!-- Pedidos en preparación -->
-                </div>
-            </div>
+    </div>
+</div>
+
+<!-- Toast para notificaciones -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div id="notificationToast" class="toast" role="alert">
+        <div class="toast-header">
+            <i class="fas fa-info-circle text-primary me-2"></i>
+            <strong class="me-auto">Cocina</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
         </div>
-        <div class="col-md-3">
-            <div class="card">
-                <div class="card-header bg-success text-white">Listo</div>
-                <div class="card-body" id="listo-pedidos">
-                    <!-- Pedidos listos -->
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card">
-                <div class="card-header bg-info text-white">Entregado</div>
-                <div class="card-body" id="entregado-pedidos">
-                    <!-- Pedidos entregados -->
-                </div>
-            </div>
+        <div class="toast-body">
+            <!-- Mensaje dinámico -->
         </div>
     </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 <script>
-// JavaScript para Kanban de cocina
+// Variables globales
 let estacionUsuario = '';
+let mesasData = {};
+let pedidos = []; // Array global para mantener los datos de pedidos
+let filtroActual = 'todos';
+
+// Inicialización
+document.addEventListener('DOMContentLoaded', function() {
+    cargarEstacionUsuario();
+    setInterval(cargarPedidos, 30000); // Auto-actualizar cada 30 segundos
+});
 
 function cargarEstacionUsuario() {
+    console.log('[DEBUG] Intentando cargar estación de usuario...');
     fetch('/cocina/profile')
-        .then(response => response.json())
+        .then(response => {
+            console.log('[DEBUG] Respuesta recibida:', response.status);
+            return response.json();
+        })
         .then(data => {
+            console.log('[DEBUG] Datos recibidos:', data);
             if (data.success || data.user) {
                 const user = data.user || data;
                 const estacion = user.estacion || 'General';
                 estacionUsuario = estacion;
                 document.getElementById('estacion-usuario').textContent = estacion.charAt(0).toUpperCase() + estacion.slice(1);
-                cargarPedidosKanban();
+                console.log('[DEBUG] Estación establecida:', estacion);
+                cargarPedidos();
             } else {
-                // Si falla la API, usar estación general
+                console.log('[DEBUG] Sin datos de usuario, usando General');
                 estacionUsuario = 'General';
                 document.getElementById('estacion-usuario').textContent = 'General';
-                cargarPedidosKanban();
+                cargarPedidos();
             }
         })
         .catch(error => {
-            console.error('Error cargando estación:', error);
-            // Continuar con estación general
+            console.error('[DEBUG] Error cargando estación:', error);
             estacionUsuario = 'General';
             document.getElementById('estacion-usuario').textContent = 'General';
-            cargarPedidosKanban();
+            cargarPedidos();
         });
 }
 
-function cargarPedidosKanban() {
+function cargarPedidos() {
+    console.log('[DEBUG] Cargando pedidos desde /cocina/api/kanban...');
     fetch('/cocina/api/kanban')
-        .then(response => response.json())
+        .then(response => {
+            console.log('[DEBUG] Respuesta kanban:', response.status);
+            return response.json();
+        })
         .then(data => {
-            // Limpiar columnas
-            document.getElementById('cola-pedidos').innerHTML = '';
-            document.getElementById('preparacion-pedidos').innerHTML = '';
-            document.getElementById('listo-pedidos').innerHTML = '';
-            document.getElementById('entregado-pedidos').innerHTML = '';
-            
-            // Llenar columnas con pedidos
+            console.log('[DEBUG] Datos kanban recibidos:', data);
             if (Array.isArray(data)) {
-                data.forEach(item => {
-                    const pedidoElement = crearElementoPedido(item);
-                    const columna = getColumnaByEstado(item.estado);
-                    if (columna) {
-                        columna.appendChild(pedidoElement);
-                    }
-                });
+                console.log('[DEBUG] Número de pedidos:', data.length);
+                
+                // Usar directamente la nueva función que agrupa por estado
+                agruparPedidosPorMesa(data);
+                renderizarMesas();
+                actualizarContadoresEstado();
             } else {
-                console.error('Datos de kanban no válidos:', data);
+                console.error('[DEBUG] Datos de kanban no válidos:', data);
+                showToast('No se pudieron cargar los pedidos', 'error');
             }
         })
         .catch(error => {
-            console.error('Error cargando kanban:', error);
+            console.error('[DEBUG] Error cargando pedidos:', error);
+            showToast('Error al cargar pedidos', 'error');
         });
 }
 
-function crearElementoPedido(item) {
+function agruparPedidosPorMesa(pedidos) {
+    // Nueva estructura: agrupar por estado en lugar de por mesa
+    mesasData = {
+        pendiente: [],
+        preparando: [],
+        listo: [],
+        entregado: []
+    };
+    
+    // Organizar todos los items por estado directamente
+    pedidos.forEach(item => {
+        const estado = item.estado || 'pendiente';
+        if (mesasData[estado]) {
+            mesasData[estado].push({
+                ...item,
+                mesa_numero: item.mesa_numero
+            });
+        }
+    });
+    
+    console.log('[DEBUG] Datos agrupados por estado:', mesasData);
+}
+
+function renderizarMesas() {
+    const container = document.getElementById('mesas-container');
+    container.innerHTML = '';
+    
+    // Crear acordeones por estado
+    const estados = ['pendiente', 'preparando', 'listo', 'entregado'];
+    
+    estados.forEach(estado => {
+        // Filtrar datos por estado actual
+        if (filtroActual !== 'todos' && filtroActual !== estado) {
+            return; // Skip este estado si no coincide con el filtro
+        }
+        
+        // Obtener items de este estado
+        const itemsEstado = obtenerItemsPorEstado(estado);
+        
+        if (itemsEstado.length > 0) {
+            const acordeonEstado = crearAcordeonPorEstado(estado, itemsEstado);
+            container.appendChild(acordeonEstado);
+        }
+    });
+}
+
+function obtenerItemsPorEstado(estado) {
+    // Usar la nueva estructura de mesasData que ya está organizada por estado
+    return mesasData[estado] || [];
+}
+
+function crearAcordeonPorEstado(estado, items) {
     const div = document.createElement('div');
-    div.className = 'card mb-2';
-    div.draggable = true;
-    div.dataset.itemId = item.id;
+    div.className = 'accordion-item mb-3';
+    div.setAttribute('data-estado', estado);
+    
+    const estadoConfig = {
+        pendiente: { color: 'warning', icon: 'clock', texto: 'Pedidos Pendientes' },
+        preparando: { color: 'info', icon: 'fire', texto: 'En Preparación' },
+        listo: { color: 'success', icon: 'check', texto: 'Listos para Servir' },
+        entregado: { color: 'secondary', icon: 'check-double', texto: 'Entregados' }
+    };
+    
+    const config = estadoConfig[estado];
+    const accordionId = `estado-${estado}`;
+    
+    // Agrupar items por mesa para mostrar
+    const itemsPorMesa = {};
+    items.forEach(item => {
+        if (!itemsPorMesa[item.mesa_numero]) {
+            itemsPorMesa[item.mesa_numero] = [];
+        }
+        itemsPorMesa[item.mesa_numero].push(item);
+    });
+    
     div.innerHTML = `
-        <div class="card-body p-2">
-            <small><strong>Mesa ${item.mesa_numero}</strong></small><br>
-            <small>${item.producto_nombre}</small><br>
-            <small>Cant: ${item.cantidad}</small><br>
-            <small class="text-muted">${item.tiempo_creacion}</small>
-            ${item.modificaciones ? `<br><small class="text-warning">Mod: ${item.modificaciones}</small>` : ''}
-        </div>`;
+        <h2 class="accordion-header">
+            <button class="accordion-button ${estado !== 'preparando' ? 'collapsed' : ''}" type="button" 
+                    data-bs-toggle="collapse" data-bs-target="#${accordionId}">
+                <div class="d-flex align-items-center w-100">
+                    <span class="badge bg-${config.color} me-3 fs-6">
+                        <i class="fas fa-${config.icon}"></i>
+                    </span>
+                    <span class="fw-bold fs-5">${config.texto}</span>
+                    <span class="badge bg-secondary ms-3 fs-6">${items.length} platos</span>
+                    <div class="ms-auto me-3">
+                        <small class="text-muted">${Object.keys(itemsPorMesa).length} mesas</small>
+                    </div>
+                </div>
+            </button>
+        </h2>
+        <div id="${accordionId}" class="accordion-collapse collapse ${estado === 'preparando' ? 'show' : ''}" 
+             data-bs-parent="#mesas-container">
+            <div class="accordion-body">
+                ${Object.keys(itemsPorMesa).map(mesaNum => 
+                    crearSeccionMesa(mesaNum, itemsPorMesa[mesaNum], estado)
+                ).join('')}
+            </div>
+        </div>
+    `;
+    
     return div;
 }
 
-function getColumnaByEstado(estado) {
-    switch(estado) {
-        case 'pendiente': return document.getElementById('cola-pedidos');
-        case 'preparando': return document.getElementById('preparacion-pedidos');
-        case 'listo': return document.getElementById('listo-pedidos');
-        case 'entregado': return document.getElementById('entregado-pedidos');
-        default: return document.getElementById('cola-pedidos'); // Por defecto en cola
+function crearSeccionMesa(mesaNumber, items, estado) {
+    return `
+        <div class="mesa-section mb-4 p-3 border rounded" data-mesa="${mesaNumber}">
+            <h5 class="mb-3 text-primary">
+                <i class="fas fa-table me-2"></i>Mesa ${mesaNumber}
+                <span class="badge bg-light text-dark ms-2">${items.length} platos</span>
+            </h5>
+            <div class="row g-3">
+                ${items.map(item => crearTarjetaPlato(item)).join('')}
+            </div>
+        </div>
+    `;
+}
+
+function crearTarjetaPlato(item) {
+    const estadoBadge = getEstadoBadge(item.estado);
+    
+    // Botones según estado
+    let botonesAccion = '';
+    if (item.estado === 'pendiente') {
+        botonesAccion = `
+            <button class="btn btn-warning btn-sm me-1" onclick="cambiarEstadoPedido(${item.id}, 'preparando')">
+                <i class="fas fa-play"></i> Iniciar
+            </button>`;
+    } else if (item.estado === 'preparando') {
+        botonesAccion = `
+            <button class="btn btn-success btn-sm me-1" onclick="cambiarEstadoPedido(${item.id}, 'listo')">
+                <i class="fas fa-check"></i> Listo
+            </button>
+            <button class="btn btn-outline-secondary btn-sm" onclick="cambiarEstadoPedido(${item.id}, 'pendiente')">
+                <i class="fas fa-undo"></i> Volver
+            </button>`;
+    } else if (item.estado === 'listo') {
+        botonesAccion = `
+            <button class="btn btn-info btn-sm me-1" onclick="cambiarEstadoPedido(${item.id}, 'entregado')">
+                <i class="fas fa-truck"></i> Entregado
+            </button>
+            <button class="btn btn-outline-secondary btn-sm" onclick="cambiarEstadoPedido(${item.id}, 'preparando')">
+                <i class="fas fa-undo"></i> Volver
+            </button>`;
+    } else if (item.estado === 'entregado') {
+        botonesAccion = `
+            <span class="badge bg-success">
+                <i class="fas fa-check-double"></i> Completado
+            </span>
+            <button class="btn btn-outline-secondary btn-sm ms-1" onclick="cambiarEstadoPedido(${item.id}, 'listo')">
+                <i class="fas fa-undo"></i> Corregir
+            </button>`;
     }
+    
+    return `
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 ${getCardClass(item.estado)}">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h6 class="card-title mb-0">${item.producto_nombre}</h6>
+                        ${estadoBadge}
+                    </div>
+                    <p class="card-text small">
+                        <i class="fas fa-utensils"></i> Cantidad: ${item.cantidad}<br>
+                        <i class="fas fa-clock"></i> ${item.tiempo_creacion}
+                        ${item.modificaciones ? `<br><i class="fas fa-sticky-note text-warning"></i> ${item.modificaciones}` : ''}
+                    </p>
+                    <div class="mt-auto">
+                        ${botonesAccion}
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function getEstadoBadge(estado) {
+    const badges = {
+        'pendiente': '<span class="badge bg-warning"><i class="fas fa-clock"></i> Pendiente</span>',
+        'preparando': '<span class="badge bg-info"><i class="fas fa-fire"></i> Preparando</span>',
+        'listo': '<span class="badge bg-success"><i class="fas fa-check"></i> Listo</span>',
+        'entregado': '<span class="badge bg-secondary"><i class="fas fa-check-double"></i> Entregado</span>',
+        'completado': '<span class="badge bg-primary"><i class="fas fa-star"></i> Completado</span>'
+    };
+    return badges[estado] || '<span class="badge bg-dark">Desconocido</span>';
+}
+
+function getCardClass(estado) {
+    const classes = {
+        'pendiente': 'border-warning',
+        'preparando': 'border-info',
+        'listo': 'border-success',
+        'entregado': 'border-secondary'
+    };
+    return classes[estado] || '';
 }
 
 function cambiarEstadoPedido(itemId, nuevoEstado) {
@@ -138,37 +390,149 @@ function cambiarEstadoPedido(itemId, nuevoEstado) {
     })
     .then(response => response.json())
     .then(data => {
-        if (!data.success) {
-            alert(data.error || 'Error al actualizar estado');
-            cargarPedidosKanban(); // Recargar en caso de error
+        if (data.success) {
+            showToast(`Estado actualizado a: ${getEstadoTexto(nuevoEstado)}`, 'success');
+            
+            // Actualización dinámica - mover solo el plato individual
+            moverPlatoIndividualEntreEstados(itemId, nuevoEstado);
+        } else {
+            showToast(data.error || 'Error al actualizar estado', 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        cargarPedidosKanban();
+        showToast('Error de conexión', 'error');
+        // En caso de error, recargar para mantener consistencia
+        cargarPedidos();
     });
 }
 
-// Configurar Sortable para drag and drop
-document.addEventListener('DOMContentLoaded', function() {
-    const columnas = ['cola-pedidos', 'preparacion-pedidos', 'listo-pedidos', 'entregado-pedidos'];
-    const estados = ['pendiente', 'preparando', 'listo', 'entregado'];
+function moverPlatoIndividualEntreEstados(itemId, nuevoEstado) {
+    // Encontrar el item en la nueva estructura mesasData y actualizar su estado
+    let itemEncontrado = null;
+    let estadoAnterior = null;
     
-    columnas.forEach((columnaId, index) => {
-        const columna = document.getElementById(columnaId);
-        new Sortable(columna, {
-            group: 'kanban',
-            animation: 150,
-            onEnd: function(evt) {
-                const itemId = evt.item.dataset.itemId;
-                const nuevoEstado = estados[index];
-                cambiarEstadoPedido(itemId, nuevoEstado);
+    // Buscar en todos los estados
+    ['pendiente', 'preparando', 'listo', 'entregado'].forEach(estado => {
+        if (mesasData[estado]) {
+            const index = mesasData[estado].findIndex(item => item.id === itemId);
+            if (index !== -1) {
+                itemEncontrado = mesasData[estado][index];
+                estadoAnterior = estado;
+                
+                // Remover del estado anterior
+                mesasData[estado].splice(index, 1);
             }
-        });
+        }
     });
     
-    cargarEstacionUsuario();
-    setInterval(cargarPedidosKanban, 15000); // Actualizar cada 15 segundos
-});
+    if (itemEncontrado) {
+        // Actualizar estado del item
+        itemEncontrado.estado = nuevoEstado;
+        
+        // Agregar al nuevo estado
+        if (!mesasData[nuevoEstado]) {
+            mesasData[nuevoEstado] = [];
+        }
+        mesasData[nuevoEstado].push(itemEncontrado);
+        
+        // Actualizar también los datos globales de pedidos
+        actualizarPedidosGlobales(itemId, nuevoEstado);
+        
+        // Re-renderizar
+        renderizarMesas();
+        
+        // Actualizar contadores en filtros
+        actualizarContadoresEstado();
+        
+        console.log('[DEBUG] Plato movido:', itemId, 'de', estadoAnterior, 'a', nuevoEstado);
+    } else {
+        console.error('[DEBUG] No se encontró el item:', itemId);
+    }
+}
+
+function actualizarPedidosGlobales(itemId, nuevoEstado) {
+    // Actualizar el estado en mesasData - ya se hace en moverPlatoIndividualEntreEstados
+    console.log('[DEBUG] Estado actualizado globalmente para item:', itemId, 'nuevo estado:', nuevoEstado);
+}
+
+function actualizarContadoresEstado() {
+    const contadores = {
+        'pendiente': 0,
+        'preparando': 0, 
+        'listo': 0,
+        'entregado': 0
+    };
+    
+    // Contar items por estado en la nueva estructura mesasData
+    Object.keys(contadores).forEach(estado => {
+        if (mesasData[estado]) {
+            contadores[estado] = mesasData[estado].length;
+        }
+    });
+    
+    // Actualizar badges en filtros
+    Object.keys(contadores).forEach(estado => {
+        const filterBtn = document.getElementById(`filter-${estado}`);
+        if (filterBtn) {
+            let badge = filterBtn.querySelector('.badge');
+            if (!badge) {
+                // Crear badge si no existe
+                badge = document.createElement('span');
+                badge.className = 'badge bg-light text-dark ms-1';
+                filterBtn.appendChild(badge);
+            }
+            badge.textContent = contadores[estado];
+        }
+    });
+    
+    console.log('[DEBUG] Contadores actualizados:', contadores);
+}
+
+function getEstadoTexto(estado) {
+    const textos = {
+        'pendiente': 'Pendiente',
+        'preparando': 'Preparando',
+        'listo': 'Listo',
+        'entregado': 'Entregado'
+    };
+    return textos[estado] || estado;
+}
+
+function filtrarEstado(estado) {
+    // Actualizar botones activos
+    document.querySelectorAll('[id^="filter-"]').forEach(btn => {
+        btn.classList.remove('active');
+        btn.classList.add('btn-outline-secondary');
+        btn.classList.remove('btn-secondary');
+    });
+    
+    const activeButton = document.getElementById(`filter-${estado}`);
+    activeButton.classList.add('active');
+    activeButton.classList.remove('btn-outline-secondary');
+    activeButton.classList.add('btn-secondary');
+    
+    filtroActual = estado;
+    renderizarMesas();
+}
+
+function showToast(message, type) {
+    const toastElement = document.getElementById('notificationToast');
+    const toastBody = toastElement.querySelector('.toast-body');
+    const toastHeader = toastElement.querySelector('.toast-header i');
+    
+    toastBody.textContent = message;
+    
+    // Cambiar icono y color según tipo
+    if (type === 'success') {
+        toastHeader.className = 'fas fa-check-circle text-success me-2';
+    } else {
+        toastHeader.className = 'fas fa-exclamation-triangle text-danger me-2';
+    }
+    
+    const toast = new bootstrap.Toast(toastElement);
+    toast.show();
+}
 </script>
 {% endblock %}
+

@@ -14,6 +14,10 @@ def index():
 def login_page():
     return render_template('login.html')
 
+@main_bp.route('/test-login')
+def test_login_page():
+    return render_template('test_login.html')
+
 # RUTAS COMENTADAS - DASHBOARD ELIMINADO PARA REDISEÑO
 # Las vistas específicas de roles se crearán posteriormente
 

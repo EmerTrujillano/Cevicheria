@@ -65,12 +65,16 @@ def api_kanban():
         # Crear lista plana para el kanban
         kanban_items = []
         for item in order_items:
-            # Determinar estado del item para kanban
-            kanban_estado = 'pendiente'  # Por defecto en cola
-            if item.order.status == 'in_kitchen':
-                kanban_estado = 'preparando'
-            elif item.order.status == 'ready':
-                kanban_estado = 'listo'
+            # Determinar estado del item para kanban basado en el estado individual del item
+            estado_mapping = {
+                'pending': 'pendiente',
+                'in_queue': 'pendiente', 
+                'preparing': 'preparando',
+                'ready': 'listo',
+                'served': 'entregado'
+            }
+            
+            kanban_estado = estado_mapping.get(item.status, 'pendiente')
                 
             # Limpiar las instrucciones para mostrar solo las del cliente
             instrucciones_limpias = item.special_instructions or ''
@@ -94,7 +98,7 @@ def api_kanban():
 
 @cocina_bp.route('/update-status', methods=['POST'])
 def update_status():
-    """Actualizar estado de item en kanban"""
+    """Actualizar estado de item en kanban - Flujo unidireccional"""
     if not check_cocina_auth():
         return jsonify({'error': 'No autorizado'}), 401
     
@@ -108,22 +112,57 @@ def update_status():
         
         order_item = OrderItem.query.get_or_404(item_id)
         
-        # Agregar campo kitchen_status si no existe
-        if not hasattr(order_item, 'kitchen_status'):
-            # Simulamos el estado por ahora - en producción se haría una migración
-            pass
+        # Estados válidos (ahora se permite retroceder para correcciones)
+        estados_validos = ['pending', 'in_queue', 'preparing', 'ready', 'served']
+
+        # Mapear estados del kanban a estados del modelo
+        estado_mapping = {
+            'pendiente': 'pending',
+            'preparando': 'preparing', 
+            'listo': 'ready',
+            'entregado': 'served'
+        }
+
+        nuevo_estado_modelo = estado_mapping.get(nuevo_estado, nuevo_estado)
         
-        # Mapear estados del kanban a estados de la orden
-        if nuevo_estado == 'preparando':
-            order_item.order.status = 'in_kitchen'
-        elif nuevo_estado == 'listo':
-            order_item.order.status = 'ready'
-        elif nuevo_estado == 'entregado':
-            order_item.order.status = 'served'
+        # Validar que el estado sea válido
+        if nuevo_estado_modelo not in estados_validos:
+            return jsonify({'success': False, 'error': 'Estado no válido'}), 400        # Actualizar estado del item
+        order_item.status = nuevo_estado_modelo
+        
+        # Actualizar timestamps según el estado
+        now = datetime.utcnow()
+        if nuevo_estado_modelo == 'preparing':
+            order_item.started_at = now
+        elif nuevo_estado_modelo == 'ready':
+            order_item.ready_at = now
+        elif nuevo_estado_modelo == 'served':
+            order_item.served_at = now
+        
+        # Actualizar estado general de la orden basado en todos sus items
+        order = order_item.order
+        all_items = order.order_items
+        
+        # Determinar estado de la orden basado en el estado de sus items
+        if all(item.status == 'served' for item in all_items):
+            order.status = 'served'
+            order.served_at = now
+        elif any(item.status in ['preparing', 'ready'] for item in all_items):
+            order.status = 'in_kitchen'
+        elif all(item.status in ['pending', 'in_queue'] for item in all_items):
+            order.status = 'pending'
         
         db.session.commit()
         
-        return jsonify({'success': True})
+        return jsonify({
+            'success': True, 
+            'message': f'Estado actualizado a {nuevo_estado_modelo}',
+            'new_status': nuevo_estado_modelo,
+            'order_status': order.status
+        })
+        
+    except ValueError as e:
+        return jsonify({'success': False, 'error': 'Estado no válido'}), 400
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'error': f'Error: {str(e)}'}), 500

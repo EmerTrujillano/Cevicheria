@@ -354,14 +354,30 @@ def get_order_details(order_id):
             return jsonify({'success': False, 'message': 'No autorizado para ver este pedido'}), 403
         
         items_data = []
-        for item in order.items:
+        for item in order.order_items:  # Usar order_items en lugar de items
+            # Mapear estado técnico a estado legible para el mozo
+            status_mapping = {
+                'pending': 'Pendiente',
+                'in_queue': 'En Cola',
+                'preparing': 'En Preparación',
+                'ready': 'Listo',
+                'served': 'Entregado'
+            }
+            
+            readable_status = status_mapping.get(item.status, item.status.title())
+            
             item_data = {
                 'id': item.id,
                 'product_name': item.product.name if item.product else 'Producto eliminado',
                 'quantity': item.quantity,
                 'unit_price': float(item.unit_price),
                 'total_price': float(item.total_price),
-                'status': item.status
+                'status': item.status,  # Estado técnico
+                'status_display': readable_status,  # Estado legible
+                'special_instructions': item.special_instructions or '',
+                'started_at': item.started_at.strftime('%H:%M') if item.started_at else None,
+                'ready_at': item.ready_at.strftime('%H:%M') if item.ready_at else None,
+                'served_at': item.served_at.strftime('%H:%M') if item.served_at else None
             }
             items_data.append(item_data)
         
@@ -469,4 +485,55 @@ def free_table():
     except Exception as e:
         db.session.rollback()
         print(f"Error liberando mesa: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@mozo_bp.route('/api/mesa/<int:mesa_id>/pedido', methods=['GET'])
+def get_mesa_order(mesa_id):
+    """Obtener pedido activo de una mesa específica"""
+    if not check_mozo_auth():
+        return jsonify({'success': False, 'message': 'No autorizado'}), 401
+    
+    try:
+        table = Table.query.get_or_404(mesa_id)
+        
+        # Buscar pedido activo de la mesa
+        active_order = Order.query.filter_by(
+            table_id=mesa_id,
+            status='active'
+        ).first()
+        
+        if not active_order:
+            return jsonify({'success': False, 'message': 'No hay pedido activo para esta mesa'})
+        
+        # Obtener items del pedido con detalles
+        order_items = OrderItem.query.filter_by(order_id=active_order.id).all()
+        
+        items_data = []
+        for item in order_items:
+            items_data.append({
+                'producto': item.product.name,
+                'cantidad': item.quantity,
+                'precio': float(item.product.price),
+                'estado': item.status,
+                'modificaciones': item.special_instructions or ''
+            })
+        
+        # Calcular total
+        total = sum(item['precio'] * item['cantidad'] for item in items_data)
+        
+        pedido_data = {
+            'id': active_order.id,
+            'estado': active_order.status,
+            'hora': active_order.created_at.strftime('%H:%M') if active_order.created_at else '',
+            'total': total,
+            'items': items_data
+        }
+        
+        return jsonify({
+            'success': True,
+            'pedido': pedido_data
+        })
+        
+    except Exception as e:
+        print(f"Error obteniendo pedido de mesa: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500

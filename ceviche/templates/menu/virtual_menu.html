@@ -65,41 +65,6 @@
         .rating {
             color: var(--accent-color);
         }
-                .category-header {
-            background: linear-gradient(135deg, var(--primary-color), var(--ocean-blue));
-            color: white;
-            padding: 15px 20px;
-            border-radius: 10px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-bottom: 0;
-            user-select: none;
-        }
-        .category-header:hover {
-            background: linear-gradient(135deg, var(--deep-blue), var(--primary-color));
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(0,106,150,0.2);
-        }
-        .category-header i {
-            transition: transform 0.3s ease;
-        }
-        .category-header.collapsed i {
-            transform: rotate(-90deg);
-        }
-        .category-content {
-            overflow: hidden;
-            transition: max-height 0.4s ease, padding 0.4s ease, opacity 0.3s ease;
-            max-height: 0;
-            padding: 0 20px;
-            opacity: 0;
-            background: rgba(255,255,255,0.95);
-            border-radius: 0 0 10px 10px;
-        }
-        .category-content.show {
-            max-height: 3000px;
-            padding: 20px;
-            opacity: 1;
-        }
         .product-card {
             transition: transform 0.2s;
             border: none;
@@ -141,7 +106,74 @@
         .navbar {
             background: rgba(255,255,255,0.95) !important;
             backdrop-filter: blur(10px);
+            transition: transform 0.3s ease-in-out;
         }
+        .navbar.navbar-hidden {
+            transform: translateY(-100%);
+        }
+        .navbar.navbar-visible {
+            transform: translateY(0);
+        }
+        
+        /* Header de categoría sticky */
+        /* Ajustar el contenido principal para que no se oculte bajo el navbar fijo */
+        body {
+            padding-top: 76px; /* Altura del navbar fijo */
+        }
+        
+        .category-header {
+            background: linear-gradient(135deg, var(--primary-color), var(--ocean-blue));
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 0;
+            user-select: none;
+            position: sticky;
+            top: 55px; /* Justo debajo del navbar fijo */
+            z-index: 998;
+        }
+        
+        .category-header:hover {
+            background: linear-gradient(135deg, var(--deep-blue), var(--primary-color));
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,106,150,0.2);
+        }
+        
+        .category-header i {
+            transition: transform 0.3s ease;
+        }
+        
+        .category-header.collapsed i {
+            transform: rotate(-90deg);
+        }
+        
+        /* Ajustar contenido para mejor scroll */
+        .menu-content {
+            padding-top: 20px;
+        }
+        
+        .category-section {
+            margin-bottom: 2rem;
+        }
+        
+        .category-content {
+            overflow: hidden;
+            transition: max-height 0.4s ease, padding 0.4s ease, opacity 0.3s ease;
+            max-height: 0;
+            padding: 0 20px;
+            opacity: 0;
+            background: rgba(255,255,255,0.95);
+            border-radius: 0 0 10px 10px;
+        }
+        
+        .category-content.show {
+            max-height: none; /* Cambiado de 3000px a none */
+            padding: 20px;
+            opacity: 1;
+        }
+        
         footer {
             background: linear-gradient(135deg, var(--deep-blue), var(--primary-color)) !important;
         }
@@ -155,8 +187,8 @@
     </div>
     {% endif %}
 
-    <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-light bg-white sticky-top shadow-sm">
+    <!-- Navbar principal fijo -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-white fixed-top shadow-sm">
         <div class="container">
             <a class="navbar-brand" href="#"><i class="fas fa-fish"></i> Cevichería Peruana</a>
             
@@ -172,7 +204,7 @@
         </div>
     </nav>
 
-    <div class="container my-4">
+    <div class="container menu-content my-4">
         <!-- Información de la mesa -->
         {% if table %}
         <div class="table-info">
@@ -233,15 +265,26 @@
         // Cargar menú
         async function loadMenu() {
             try {
+                console.log('Cargando menú desde /menu/products...');
                 const response = await fetch('/menu/products');
                 const data = await response.json();
                 
+                console.log('Respuesta del API:', data);
+                
                 if (data.success) {
+                    console.log('Datos recibidos:', data.data);
+                    if (data.data && data.data.length > 0) {
+                        console.log('Primera categoría:', data.data[0]);
+                        if (data.data[0].products && data.data[0].products.length > 0) {
+                            console.log('Primer producto:', data.data[0].products[0]);
+                        }
+                    }
                     renderMenu(data.data);
                 } else {
                     showError('Error al cargar el menú: ' + (data.message || 'desconocido'));
                 }
             } catch (error) {
+                console.error('Error en loadMenu:', error);
                 showError('Error de conexión: ' + error.message);
             }
         }
@@ -263,7 +306,7 @@
                 
                 html += `
                     <div class="category-section mb-4">
-                        <div class="category-header ${index > 0 ? 'collapsed' : ''}" onclick="toggleCategory(this)">
+                        <div class="category-header" onclick="toggleCategory(this)">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
                                     <h3 class="mb-1">${category.name}</h3>
@@ -272,11 +315,12 @@
                                 <i class="fas fa-chevron-down"></i>
                             </div>
                         </div>
-                        <div class="category-content ${index === 0 ? 'show' : ''}">
+                        <div class="category-content show">
                             <div class="product-grid">
                 `;
                 
                 products.forEach(product => {
+                    console.log('Renderizando producto:', product.name, 'con imagen:', product.image_url);
                     html += renderProductCard(product);
                 });
                 
@@ -295,17 +339,10 @@
             const content = header.nextElementSibling;
             const icon = header.querySelector('i');
             
-            // Cerrar otras categorías si están abiertas
-            document.querySelectorAll('.category-content.show').forEach(openContent => {
-                if (openContent !== content) {
-                    openContent.classList.remove('show');
-                    openContent.previousElementSibling.classList.add('collapsed');
-                }
-            });
-            
             // Alternar la categoría actual
             content.classList.toggle('show');
-            header.classList.toggle('collapsed');
+            icon.classList.toggle('fa-chevron-down');
+            icon.classList.toggle('fa-chevron-up');
         }
         
         // Función para mostrar etiquetas con emojis
@@ -429,6 +466,17 @@
 
             return `
                 <div class="product-card h-100">
+                    ${(product.image_url && product.image_url !== 'None' && product.image_url.trim() !== '') ? 
+                        `<div class="position-relative">
+                            <img src="${product.image_url}" class="card-img-top" alt="${product.name}" 
+                                 style="height: 200px; object-fit: cover;"
+                                 onerror="this.style.display='none'; this.parentElement.innerHTML='<div class=\\'card-img-top d-flex align-items-center justify-content-center\\' style=\\'height: 200px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);\\'>    <i class=\\'fas fa-utensils fa-3x text-white opacity-50\\'></i></div>';">
+                         </div>` : 
+                        `<div class="card-img-top d-flex align-items-center justify-content-center" 
+                             style="height: 200px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                            <i class="fas fa-utensils fa-3x text-white opacity-50"></i>
+                        </div>`
+                    }
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-start mb-2">
                             <h5 class="card-title mb-1">${product.name}</h5>
@@ -587,8 +635,27 @@
         });
         {% endif %}
         
+        // Header dinámico - ocultar/mostrar al hacer scroll
+        let lastScrollTop = 0;
+        let navbar = null;
+        
+        function setupStickyHeader() {
+            navbar = document.querySelector('.navbar');
+            if (!navbar) return;
+            
+            navbar.classList.add('navbar-visible');
+            
+            window.addEventListener('scroll', function() {
+                const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                lastScrollTop = scrollTop <= 0 ? 0 : scrollTop; // For Mobile or negative scrolling
+            });
+        }
+        
         // Cargar menú al inicio
-        document.addEventListener('DOMContentLoaded', loadMenu);
+        document.addEventListener('DOMContentLoaded', function() {
+            setupStickyHeader();
+            loadMenu();
+        });
     </script>
 </body>
 </html>

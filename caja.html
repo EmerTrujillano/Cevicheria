@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="es" class="">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cevicheria POS - Interfaz de Caja</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
+        .dark ::-webkit-scrollbar-track { background: #2d3748; }
+        .dark ::-webkit-scrollbar-thumb { background: #4a5568; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        .payment-method.selected {
+            box-shadow: 0 0 0 3px var(--tw-ring-color);
+            transform: scale(1.05);
+        }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-slate-200 dark:bg-slate-900 text-slate-800 dark:text-slate-200">
+
+    <div id="app" class="h-screen w-screen flex flex-col p-4 gap-4">
+        <!-- Main App Layout -->
+        <header class="flex justify-between items-center bg-white dark:bg-slate-800 p-4 rounded-lg shadow-md">
+            <h1 class="text-2xl font-bold">Panel de Caja</h1>
+            <div class="flex items-center gap-4">
+                <span class="font-semibold">Cajero: Juan Pérez</span>
+                <button onclick="toggleDarkMode()" class="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors" id="theme-toggle-btn"></button>
+            </div>
+        </header>
+
+        <main class="flex-grow grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <!-- Columna de Mesas Abiertas -->
+            <section id="open-tables" class="bg-white dark:bg-slate-800 rounded-lg shadow-md p-4 flex flex-col">
+                <h2 class="text-xl font-semibold mb-4 border-b pb-2 dark:border-slate-600">Cuentas Abiertas</h2>
+                <div id="tables-list" class="flex-grow overflow-y-auto space-y-2 pr-2">
+                    <!-- Las mesas se renderizan aquí -->
+                </div>
+            </section>
+
+            <!-- Columna Central: Detalle y Pago -->
+            <section id="payment-panel" class="lg:col-span-2 bg-white dark:bg-slate-800 rounded-lg shadow-md p-6 flex flex-col">
+                <!-- Contenido se renderizará dinámicamente -->
+            </section>
+        </main>
+    </div>
+
+    <script>
+        // --- DATOS SIMULADOS ---
+        const MESAS_ABIERTAS = [
+            { id: 1, total: 210.50, mozo: 'Ana', items: [
+                { nombre: 'Ceviche Clásico', cantidad: 2, precio: 45.00 },
+                { nombre: 'Jalea Mixta', cantidad: 1, precio: 60.00 },
+                { nombre: 'Chicha Morada (Jarra)', cantidad: 1, precio: 15.00 },
+                { nombre: 'Inca Kola 500ml', cantidad: 3, precio: 5.00 }
+            ]},
+            { id: 3, total: 150.00, mozo: 'Luis', items: [ { nombre: 'Arroz con Mariscos', cantidad: 2, precio: 50.00 }, { nombre: 'Causa Limeña', cantidad: 1, precio: 30.00 }, { nombre: 'Agua Mineral', cantidad: 2, precio: 4.00 } ]},
+            { id: 5, total: 350.00, mozo: 'Ana', items: [ { nombre: 'Tiradito 2 Cremas', cantidad: 3, precio: 48.00 } ]},
+            { id: 7, total: 95.00, mozo: 'Carlos', items: [ { nombre: 'Pescado a lo Macho', cantidad: 1, precio: 58.00 } ]},
+        ];
+
+        // --- ESTADO DE LA APLICACIÓN ---
+        const appState = {
+            selectedTableId: 1,
+            isDarkMode: localStorage.getItem('darkMode') === 'true',
+            activePaymentMethod: 'efectivo',
+            recibido: 0
+        };
+
+        // --- ICONOS SVG ---
+        const ICONS = {
+             sun: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>`,
+             moon: `<svg xmlns="http://www.w.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>`,
+             money: `<svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg>`,
+             card: `<svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>`,
+             mobile: `<svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>`
+        };
+
+        // --- LÓGICA DE RENDERIZADO ---
+        function renderApp() {
+            document.documentElement.classList.toggle('dark', appState.isDarkMode);
+            document.getElementById('theme-toggle-btn').innerHTML = appState.isDarkMode ? ICONS.sun : ICONS.moon;
+            renderTablesList();
+            renderPaymentPanel();
+        }
+
+        function renderTablesList() {
+            const listEl = document.getElementById('tables-list');
+            listEl.innerHTML = MESAS_ABIERTAS.map(mesa => `
+                <div onclick="selectTable(${mesa.id})" class="p-4 rounded-lg cursor-pointer transition-all duration-300 ${appState.selectedTableId === mesa.id ? 'bg-blue-500 text-white shadow-lg scale-105' : 'bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600'}">
+                    <div class="flex justify-between items-center">
+                        <span class="font-bold text-lg">Mesa ${mesa.id}</span>
+                        <span class="font-bold text-xl">S/ ${mesa.total.toFixed(2)}</span>
+                    </div>
+                    <div class="text-sm mt-1 opacity-80">Mozo: ${mesa.mozo}</div>
+                </div>
+            `).join('');
+        }
+
+        function renderPaymentPanel() {
+            const panelEl = document.getElementById('payment-panel');
+            const mesa = MESAS_ABIERTAS.find(m => m.id === appState.selectedTableId);
+            if (!mesa) {
+                panelEl.innerHTML = `<div class="flex-grow flex items-center justify-center text-slate-400"><p class="text-2xl">Selecciona una mesa para cobrar</p></div>`;
+                return;
+            }
+
+            const itemsHtml = mesa.items.map(item => `
+                <div class="flex justify-between items-center py-2 border-b dark:border-slate-700">
+                    <div>
+                        <p class="font-semibold">${item.nombre}</p>
+                        <p class="text-sm text-slate-500">${item.cantidad} x S/ ${item.precio.toFixed(2)}</p>
+                    </div>
+                    <p class="font-bold text-lg">S/ ${(item.cantidad * item.precio).toFixed(2)}</p>
+                </div>
+            `).join('');
+
+            const cambio = appState.recibido - mesa.total;
+
+            panelEl.innerHTML = `
+                <div class="flex-grow grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Detalle de la cuenta -->
+                    <div class="flex flex-col">
+                        <h2 class="text-2xl font-bold mb-4">Cuenta de Mesa ${mesa.id}</h2>
+                        <div class="flex-grow space-y-2 overflow-y-auto pr-2">${itemsHtml}</div>
+                        <div class="mt-4 pt-4 border-t-2 dark:border-slate-600 flex justify-between items-center">
+                            <span class="text-2xl font-bold">TOTAL:</span>
+                            <span class="text-3xl font-bold text-blue-500">S/ ${mesa.total.toFixed(2)}</span>
+                        </div>
+                    </div>
+
+                    <!-- Panel de Pago -->
+                    <div class="flex flex-col bg-slate-100 dark:bg-slate-700/50 p-6 rounded-lg">
+                        <h3 class="text-xl font-semibold mb-4">Seleccionar Método de Pago</h3>
+                        <div class="grid grid-cols-3 gap-4 mb-6">
+                            <button onclick="selectPaymentMethod('efectivo')" class="payment-method flex flex-col items-center justify-center p-4 rounded-lg bg-white dark:bg-slate-600 transition-all duration-300 ring-blue-500 ${appState.activePaymentMethod === 'efectivo' ? 'selected' : ''}">${ICONS.money}<span class="mt-2 font-semibold">Efectivo</span></button>
+                            <button onclick="selectPaymentMethod('tarjeta')" class="payment-method flex flex-col items-center justify-center p-4 rounded-lg bg-white dark:bg-slate-600 transition-all duration-300 ring-green-500 ${appState.activePaymentMethod === 'tarjeta' ? 'selected' : ''}">${ICONS.card}<span class="mt-2 font-semibold">Tarjeta</span></button>
+                            <button onclick="selectPaymentMethod('yapeplin')" class="payment-method flex flex-col items-center justify-center p-4 rounded-lg bg-white dark:bg-slate-600 transition-all duration-300 ring-purple-500 ${appState.activePaymentMethod === 'yapeplin' ? 'selected' : ''}">${ICONS.mobile}<span class="mt-2 font-semibold">Yape/Plin</span></button>
+                        </div>
+
+                        <!-- Calculadora Efectivo -->
+                        <div id="cash-calculator" class="${appState.activePaymentMethod !== 'efectivo' ? 'hidden' : ''}">
+                            <div class="grid grid-cols-3 gap-2 mb-4">
+                                ${[100, 50, 20, 10, 5, 2, 1].map(val => `<button onclick="setRecibido(${val})" class="p-3 bg-white dark:bg-slate-600 rounded-md font-semibold hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors">S/ ${val}</button>`).join('')}
+                                <button onclick="setRecibido(${Math.ceil(mesa.total)})" class="col-span-2 p-3 bg-white dark:bg-slate-600 rounded-md font-semibold hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors">Monto Exacto</button>
+                            </div>
+                            <input type="number" id="recibido-input" oninput="updateRecibido(this.value)" value="${appState.recibido}" class="w-full p-3 text-right text-2xl font-bold bg-white dark:bg-slate-800 border-2 dark:border-slate-600 rounded-lg mb-4" placeholder="S/ 0.00">
+                        </div>
+
+                        <!-- Resumen de Pago -->
+                        <div class="space-y-3 text-lg mt-auto">
+                           <div class="flex justify-between items-center"><span class="text-slate-500 dark:text-slate-400">Recibido:</span><span class="font-semibold">S/ ${appState.recibido.toFixed(2)}</span></div>
+                           <div class="flex justify-between items-center"><span class="text-slate-500 dark:text-slate-400">Cambio:</span><span class="font-bold text-green-500 text-2xl">S/ ${cambio > 0 ? cambio.toFixed(2) : '0.00'}</span></div>
+                        </div>
+
+                        <button class="w-full mt-6 bg-green-500 text-white font-bold py-4 rounded-lg text-xl hover:bg-green-600 transition-colors shadow-lg">Confirmar e Imprimir Factura</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- MANEJADORES DE EVENTOS ---
+        function toggleDarkMode() {
+            appState.isDarkMode = !appState.isDarkMode;
+            localStorage.setItem('darkMode', appState.isDarkMode);
+            renderApp();
+        }
+
+        function selectTable(tableId) {
+            appState.selectedTableId = tableId;
+            const mesa = MESAS_ABIERTAS.find(m => m.id === tableId);
+            appState.recibido = mesa.total;
+            renderApp();
+        }
+
+        function selectPaymentMethod(method) {
+            appState.activePaymentMethod = method;
+            const mesa = MESAS_ABIERTAS.find(m => m.id === appState.selectedTableId);
+            appState.recibido = method === 'efectivo' ? 0 : mesa.total;
+            renderPaymentPanel();
+        }
+
+        function setRecibido(amount) {
+            appState.recibido += amount;
+            document.getElementById('recibido-input').value = appState.recibido;
+            renderPaymentPanel();
+        }
+
+        function updateRecibido(value) {
+            appState.recibido = parseFloat(value) || 0;
+            renderPaymentPanel();
+        }
+
+        // --- INICIALIZACIÓN ---
+        document.addEventListener('DOMContentLoaded', renderApp);
+    </script>
+
+</body>
+</html>

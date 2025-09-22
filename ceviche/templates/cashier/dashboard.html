@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="es" class="">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cevicheria POS - Interfaz de Caja</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
+        .dark ::-webkit-scrollbar-track { background: #2d3748; }
+        .dark ::-webkit-scrollbar-thumb { background: #4a5568; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        .payment-method.selected {
+            box-shadow: 0 0 0 3px var(--tw-ring-color);
+            transform: scale(1.05);
+        }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-slate-200 dark:bg-slate-900 text-slate-800 dark:text-slate-200">
+
+    <div id="app" class="h-screen w-screen flex flex-col p-4 gap-4">
+        <!-- Main App Layout -->
+        <header class="flex justify-between items-center bg-white dark:bg-slate-800 p-4 rounded-lg shadow-md">
+            <h1 class="text-2xl font-bold">Panel de Caja</h1>
+            <div class="flex items-center gap-4">
+                <span class="font-semibold">Cajero: {{ session.get('username', 'Cajero') }}</span>
+                <button onclick="toggleDarkMode()" class="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors" id="theme-toggle-btn"></button>
+                <a href="{{ url_for('auth.logout') }}" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors">
+                    Cerrar Sesión
+                </a>
+            </div>
+        </header>
+
+        <main class="flex-grow grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <!-- Columna de Mesas Abiertas -->
+            <section id="open-tables" class="bg-white dark:bg-slate-800 rounded-lg shadow-md p-4 flex flex-col">
+                <h2 class="text-xl font-semibold mb-4 border-b pb-2 dark:border-slate-600 flex justify-between items-center">
+                    <span>Cuentas Abiertas</span>
+                    <button onclick="loadOpenTables()" class="text-blue-500 hover:text-blue-600 text-sm">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                        </svg>
+                    </button>
+                </h2>
+                <div id="tables-list" class="flex-grow overflow-y-auto space-y-2 pr-2">
+                    <!-- Las mesas se cargarán aquí dinámicamente -->
+                    <div class="text-center text-slate-500 mt-8">
+                        <div class="text-4xl mb-2">⏳</div>
+                        <p>Cargando mesas abiertas...</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Columna Central: Detalle y Pago -->
+            <section id="payment-panel" class="lg:col-span-2 bg-white dark:bg-slate-800 rounded-lg shadow-md p-6 flex flex-col">
+                <div class="flex-grow flex items-center justify-center text-slate-400">
+                    <div class="text-center">
+                        <div class="text-6xl mb-4">🏦</div>
+                        <p class="text-2xl">Selecciona una mesa para cobrar</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Toast notifications -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+    <script>
+        // --- ESTADO DE LA APLICACIÓN ---
+        const appState = {
+            selectedTableId: null,
+            isDarkMode: localStorage.getItem('darkMode') === 'true',
+            activePaymentMethod: 'efectivo',
+            recibido: 0,
+            openTables: []
+        };
+
+        // --- ICONOS SVG ---
+        const ICONS = {
+             sun: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>`,
+             moon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>`,
+             money: `<svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg>`,
+             card: `<svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>`,
+             mobile: `<svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>`
+        };
+
+        // --- FUNCIONES DE UTILIDAD ---
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            const bgColor = type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500';
+            
+            toast.className = `${bgColor} text-white px-6 py-3 rounded-lg shadow-lg fade-in`;
+            toast.textContent = message;
+            
+            document.getElementById('toast-container').appendChild(toast);
+            
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+
+        // --- CARGA DE DATOS ---
+        async function loadOpenTables() {
+            try {
+                console.log('Cargando mesas abiertas...');
+                const response = await fetch('/caja/api/open-tables');
+                const data = await response.json();
+                
+                if (data.success) {
+                    appState.openTables = data.tables;
+                    renderTablesList();
+                } else {
+                    showToast('Error al cargar mesas: ' + data.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Error de conexión al cargar mesas', 'error');
+            }
+        }
+
+        async function loadTableDetails(tableId) {
+            try {
+                const response = await fetch(`/caja/api/table/${tableId}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    return data.table;
+                } else {
+                    showToast('Error al cargar detalle de mesa: ' + data.error, 'error');
+                    return null;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Error de conexión al cargar detalles', 'error');
+                return null;
+            }
+        }
+
+        async function generatePaymentQR(tableId) {
+            try {
+                const response = await fetch(`/caja/api/generate-payment-qr/${tableId}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    return data;
+                } else {
+                    showToast('Error al generar QR: ' + data.error, 'error');
+                    return null;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Error de conexión al generar QR', 'error');
+                return null;
+            }
+        }
+
+        // --- PROCESAMIENTO DE PAGOS ---
+        async function processPayment(tableId, paymentData) {
+            try {
+                const response = await fetch('/caja/api/process-payment', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        table_id: tableId,
+                        payment_method: paymentData.method,
+                        amount_received: paymentData.received,
+                        change: paymentData.change
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showToast('Pago procesado exitosamente', 'success');
+                    
+                    // Remover la mesa de la lista
+                    appState.openTables = appState.openTables.filter(t => t.id !== tableId);
+                    appState.selectedTableId = null;
+                    
+                    renderApp();
+                    
+                    // Abrir factura en nueva ventana
+                    if (data.receipt_url) {
+                        window.open(data.receipt_url, '_blank');
+                    }
+                } else {
+                    showToast('Error al procesar pago: ' + data.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Error de conexión al procesar pago', 'error');
+            }
+        }
+
+        // --- LÓGICA DE RENDERIZADO ---
+        function renderApp() {
+            document.documentElement.classList.toggle('dark', appState.isDarkMode);
+            document.getElementById('theme-toggle-btn').innerHTML = appState.isDarkMode ? ICONS.sun : ICONS.moon;
+            renderTablesList();
+            renderPaymentPanel();
+        }
+
+        function renderTablesList() {
+            const listEl = document.getElementById('tables-list');
+            
+            if (appState.openTables.length === 0) {
+                listEl.innerHTML = `
+                    <div class="text-center text-slate-500 mt-8">
+                        <div class="text-4xl mb-2">✅</div>
+                        <p>No hay mesas abiertas</p>
+                        <button onclick="loadOpenTables()" class="mt-2 text-blue-500 hover:text-blue-600">
+                            Actualizar
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+            
+            listEl.innerHTML = appState.openTables.map(mesa => `
+                <div onclick="selectTable(${mesa.id})" class="p-4 rounded-lg cursor-pointer transition-all duration-300 ${appState.selectedTableId === mesa.id ? 'bg-blue-500 text-white shadow-lg scale-105' : 'bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600'}">
+                    <div class="flex justify-between items-center">
+                        <span class="font-bold text-lg">Mesa ${mesa.number}</span>
+                        <span class="font-bold text-xl">S/ ${mesa.total.toFixed(2)}</span>
+                    </div>
+                    <div class="text-sm mt-1 opacity-80">
+                        ${mesa.waiter_name ? `Mozo: ${mesa.waiter_name}` : 'Sin mozo asignado'}
+                    </div>
+                    <div class="text-xs mt-1 opacity-70">
+                        ${mesa.items_count} producto${mesa.items_count !== 1 ? 's' : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function renderPaymentPanel() {
+            const panelEl = document.getElementById('payment-panel');
+            
+            if (!appState.selectedTableId) {
+                panelEl.innerHTML = `
+                    <div class="flex-grow flex items-center justify-center text-slate-400">
+                        <div class="text-center">
+                            <div class="text-6xl mb-4">🏦</div>
+                            <p class="text-2xl">Selecciona una mesa para cobrar</p>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            // Mostrar loading
+            panelEl.innerHTML = `
+                <div class="flex-grow flex items-center justify-center text-slate-400">
+                    <div class="text-center">
+                        <div class="text-4xl mb-4">⏳</div>
+                        <p class="text-xl">Cargando detalles...</p>
+                    </div>
+                </div>
+            `;
+
+            // Cargar detalles de la mesa
+            const mesa = await loadTableDetails(appState.selectedTableId);
+            if (!mesa) return;
+
+            const itemsHtml = mesa.items.map(item => `
+                <div class="flex justify-between items-center py-2 border-b dark:border-slate-700">
+                    <div>
+                        <p class="font-semibold">${item.product_name}</p>
+                        <p class="text-sm text-slate-500">${item.quantity} x S/ ${item.price.toFixed(2)}</p>
+                        ${item.special_instructions ? `<p class="text-xs text-slate-400">${item.special_instructions}</p>` : ''}
+                    </div>
+                    <p class="font-bold text-lg">S/ ${(item.quantity * item.price).toFixed(2)}</p>
+                </div>
+            `).join('');
+
+            const cambio = appState.recibido - mesa.total;
+
+            panelEl.innerHTML = `
+                <div class="flex-grow grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Detalle de la cuenta -->
+                    <div class="flex flex-col">
+                        <h2 class="text-2xl font-bold mb-4">Cuenta de Mesa ${mesa.number}</h2>
+                        <div class="flex-grow space-y-2 overflow-y-auto pr-2">${itemsHtml}</div>
+                        <div class="mt-4 pt-4 border-t-2 dark:border-slate-600 flex justify-between items-center">
+                            <span class="text-2xl font-bold">TOTAL:</span>
+                            <span class="text-3xl font-bold text-blue-500">S/ ${mesa.total.toFixed(2)}</span>
+                        </div>
+                    </div>
+
+                    <!-- Panel de Pago -->
+                    <div class="flex flex-col bg-slate-100 dark:bg-slate-700/50 p-6 rounded-lg">
+                        <h3 class="text-xl font-semibold mb-4">Seleccionar Método de Pago</h3>
+                        <div class="grid grid-cols-3 gap-4 mb-6">
+                            <button onclick="selectPaymentMethod('efectivo')" class="payment-method flex flex-col items-center justify-center p-4 rounded-lg bg-white dark:bg-slate-600 transition-all duration-300 ring-blue-500 ${appState.activePaymentMethod === 'efectivo' ? 'selected' : ''}">${ICONS.money}<span class="mt-2 font-semibold">Efectivo</span></button>
+                            <button onclick="selectPaymentMethod('tarjeta')" class="payment-method flex flex-col items-center justify-center p-4 rounded-lg bg-white dark:bg-slate-600 transition-all duration-300 ring-green-500 ${appState.activePaymentMethod === 'tarjeta' ? 'selected' : ''}">${ICONS.card}<span class="mt-2 font-semibold">Tarjeta</span></button>
+                            <button onclick="selectPaymentMethod('yapeplin')" class="payment-method flex flex-col items-center justify-center p-4 rounded-lg bg-white dark:bg-slate-600 transition-all duration-300 ring-purple-500 ${appState.activePaymentMethod === 'yapeplin' ? 'selected' : ''}">${ICONS.mobile}<span class="mt-2 font-semibold">Yape/Plin</span></button>
+                        </div>
+
+                        <!-- Calculadora Efectivo -->
+                        <div id="cash-calculator" class="${appState.activePaymentMethod !== 'efectivo' ? 'hidden' : ''}">
+                            <div class="grid grid-cols-3 gap-2 mb-4">
+                                ${[100, 50, 20, 10, 5, 2, 1].map(val => `<button onclick="setRecibido(${val})" class="p-3 bg-white dark:bg-slate-600 rounded-md font-semibold hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors">S/ ${val}</button>`).join('')}
+                                <button onclick="setRecibido(${Math.ceil(mesa.total)})" class="col-span-2 p-3 bg-white dark:bg-slate-600 rounded-md font-semibold hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors">Monto Exacto</button>
+                            </div>
+                            <input type="number" id="recibido-input" oninput="updateRecibido(this.value)" value="${appState.recibido}" class="w-full p-3 text-right text-2xl font-bold bg-white dark:bg-slate-800 border-2 dark:border-slate-600 rounded-lg mb-4" placeholder="S/ 0.00">
+                        </div>
+
+                        <!-- Panel Yape/Plin -->
+                        <div id="yapeplin-panel" class="${appState.activePaymentMethod !== 'yapeplin' ? 'hidden' : ''}">
+                            <div class="text-center p-6 bg-white dark:bg-slate-600 rounded-lg mb-4">
+                                <h4 class="text-lg font-semibold mb-4">Escanea el código QR</h4>
+                                <div class="bg-white p-4 rounded-lg inline-block mb-4">
+                                    <div id="qr-code" class="w-32 h-32 bg-gray-200 border-2 border-dashed border-gray-400 flex items-center justify-center text-gray-500 text-sm">
+                                        <div class="text-center">
+                                            <div class="text-2xl mb-1">⏳</div>
+                                            <div class="text-xs">Generando QR...</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <p class="text-sm text-slate-500">Monto: S/ ${mesa.total.toFixed(2)}</p>
+                                <p class="text-xs text-slate-400 mt-2">El cliente debe escanear y pagar. Confirma cuando recibas la notificación.</p>
+                                <button onclick="loadQRCode(${mesa.id})" class="mt-2 text-blue-500 hover:text-blue-600 text-sm">
+                                    <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                    </svg>
+                                    Regenerar QR
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Panel Tarjeta -->
+                        <div id="card-panel" class="${appState.activePaymentMethod !== 'tarjeta' ? 'hidden' : ''}">
+                            <div class="text-center p-6 bg-white dark:bg-slate-600 rounded-lg mb-4">
+                                <h4 class="text-lg font-semibold mb-4">Pago con Tarjeta</h4>
+                                <div class="text-3xl mb-4">💳</div>
+                                <p class="text-lg font-bold">S/ ${mesa.total.toFixed(2)}</p>
+                                <p class="text-sm text-slate-500 mt-2">Procesa el pago en el terminal POS</p>
+                            </div>
+                        </div>
+
+                        <!-- Resumen de Pago -->
+                        <div class="space-y-3 text-lg mt-auto">
+                           <div class="flex justify-between items-center"><span class="text-slate-500 dark:text-slate-400">Recibido:</span><span class="font-semibold">S/ ${appState.recibido.toFixed(2)}</span></div>
+                           <div class="flex justify-between items-center"><span class="text-slate-500 dark:text-slate-400">Cambio:</span><span class="font-bold text-green-500 text-2xl">S/ ${cambio > 0 ? cambio.toFixed(2) : '0.00'}</span></div>
+                        </div>
+
+                        <button onclick="confirmPayment()" class="w-full mt-6 bg-green-500 text-white font-bold py-4 rounded-lg text-xl hover:bg-green-600 transition-colors shadow-lg" ${appState.activePaymentMethod === 'efectivo' && cambio < 0 ? 'disabled' : ''}>
+                            Confirmar e Imprimir Factura
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- MANEJADORES DE EVENTOS ---
+        function toggleDarkMode() {
+            appState.isDarkMode = !appState.isDarkMode;
+            localStorage.setItem('darkMode', appState.isDarkMode);
+            renderApp();
+        }
+
+        async function selectTable(tableId) {
+            appState.selectedTableId = tableId;
+            const mesa = appState.openTables.find(m => m.id === tableId);
+            if (mesa) {
+                appState.recibido = appState.activePaymentMethod === 'efectivo' ? 0 : mesa.total;
+            }
+            renderPaymentPanel();
+        }
+
+        function selectPaymentMethod(method) {
+            appState.activePaymentMethod = method;
+            const mesa = appState.openTables.find(m => m.id === appState.selectedTableId);
+            if (mesa) {
+                appState.recibido = method === 'efectivo' ? 0 : mesa.total;
+            }
+            
+            // Si se selecciona Yape/Plin, cargar el QR automáticamente
+            if (method === 'yapeplin') {
+                loadQRCode(appState.selectedTableId);
+            }
+            
+            renderPaymentPanel();
+        }
+
+        async function loadQRCode(tableId) {
+            const qrElement = document.getElementById('qr-code');
+            if (!qrElement) return;
+            
+            // Mostrar loading
+            qrElement.innerHTML = `
+                <div class="text-center">
+                    <div class="text-2xl mb-1">⏳</div>
+                    <div class="text-xs">Generando QR...</div>
+                </div>
+            `;
+            
+            try {
+                const qrData = await generatePaymentQR(tableId);
+                if (qrData && qrData.qr_image) {
+                    qrElement.innerHTML = `<img src="${qrData.qr_image}" alt="QR de pago" class="w-full h-full object-contain">`;
+                } else {
+                    qrElement.innerHTML = `
+                        <div class="text-center text-red-500">
+                            <div class="text-xl mb-1">❌</div>
+                            <div class="text-xs">Error al generar QR</div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading QR:', error);
+                qrElement.innerHTML = `
+                    <div class="text-center text-red-500">
+                        <div class="text-xl mb-1">❌</div>
+                        <div class="text-xs">Error de conexión</div>
+                    </div>
+                `;
+            }
+        }
+
+        function setRecibido(amount) {
+            if (appState.activePaymentMethod === 'efectivo') {
+                appState.recibido += amount;
+            } else {
+                appState.recibido = amount;
+            }
+            const input = document.getElementById('recibido-input');
+            if (input) input.value = appState.recibido;
+            renderPaymentPanel();
+        }
+
+        function updateRecibido(value) {
+            appState.recibido = parseFloat(value) || 0;
+            renderPaymentPanel();
+        }
+
+        async function confirmPayment() {
+            if (!appState.selectedTableId) {
+                showToast('No hay mesa seleccionada', 'error');
+                return;
+            }
+
+            const mesa = appState.openTables.find(m => m.id === appState.selectedTableId);
+            if (!mesa) {
+                showToast('Mesa no encontrada', 'error');
+                return;
+            }
+
+            if (appState.activePaymentMethod === 'efectivo' && appState.recibido < mesa.total) {
+                showToast('El monto recibido es insuficiente', 'error');
+                return;
+            }
+
+            const cambio = appState.recibido - mesa.total;
+
+            await processPayment(appState.selectedTableId, {
+                method: appState.activePaymentMethod,
+                received: appState.recibido,
+                change: cambio > 0 ? cambio : 0
+            });
+        }
+
+        // --- INICIALIZACIÓN ---
+        document.addEventListener('DOMContentLoaded', function() {
+            renderApp();
+            loadOpenTables();
+        });
+    </script>
+
+</body>
+</html>

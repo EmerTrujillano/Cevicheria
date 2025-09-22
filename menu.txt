@@ -1,0 +1,79 @@
+{
+  "estacion": "fríos",
+  "platos": [
+    "Ceviche clásico",
+    "Ceviche mixto",
+    "Ceviche nikkei",
+    "Tiradito al ají amarillo",
+    "Tiradito tres ajíes",
+    "Leche de tigre",
+    "Choritos a la chalaca",
+    "Causa limeña (pollo / pulpo / cangrejo)",
+    "Piqueo marino (frío)"
+  ]
+}
+
+{
+  "estacion": "calientes",
+  "platos": [
+    "Arroz con mariscos",
+    "Chaufa de mariscos",
+    "Tacu tacu con mariscos",
+    "Sudado de pescado",
+    "Parihuela",
+    "Pescado a lo macho",
+    "Ají de gallina",
+    "Piqueo marino (caliente)"
+  ]
+}
+
+{
+  "estacion": "frituras",
+  "platos": [
+    "Jalea mixta",
+    "Chicharrón de calamar",
+    "Pulpo a la parrilla",
+    "Lomo saltado"
+  ]
+}
+
+{
+  "estacion": "bebidas",
+  "platos": [
+    "Chicha morada",
+    "Chicha de jora",
+    "Inca Kola",
+    "Jugo de maracuyá",
+    "Limonada",
+    "Agua sin/con gas",
+    "Pisco Sour",
+    "Chilcano (clásico, maracuyá, jengibre)",
+    "Sangría",
+    "Cerveza (Pilsen, Cusqueña, artesanal)"
+  ]
+}
+
+{
+  "estacion": "postres",
+  "platos": [
+    "Suspiro limeño",
+    "Mazamorra morada",
+    "Arroz con leche",
+    "Tres leches",
+    "Helado de maracuyá o chirimoya"
+  ]
+}
+
+{
+  "estacion": "acompañamientos",
+  "platos": [
+    "Camote glaseado",
+    "Choclo con queso",
+    "Papa o yuca frita",
+    "Ensalada criolla",
+    "Pan al ajo"
+  ]
+}
+
+estacion ENUM('fríos', 'calientes', 'frituras', 'bebidas', 'postres', 'acompañamientos')
+Etiquetas visuales útiles: ⭐ Recomendado, 🌶️ Picante, 🏆 Más vendido, 🆕 Nuevo.

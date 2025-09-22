@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+
+{% block title %}Iniciar Sesión - Sistema Cevichería{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 400px; margin: 50px auto;">
+    <h2 class="text-center mb-3">Iniciar Sesión</h2>
+    
+    <form id="loginForm" onsubmit="handleLogin(event)">
+        <div class="form-group">
+            <label for="username">Usuario:</label>
+            <input type="text" id="username" name="username" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="password">Contraseña:</label>
+            <div style="position: relative;">
+                <input type="password" id="password" name="password" required>
+                <button type="button" id="togglePassword" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 18px;" title="Mostrar/Ocultar contraseña">
+                    👁️
+                </button>
+            </div>
+        </div>
+        
+        <button type="submit" class="btn" style="width: 100%;">Iniciar Sesión</button>
+    </form>
+    
+    <div class="text-center" style="margin-top: 20px;">
+        <p style="color: #6c757d; font-size: 0.9rem;">Sistema de Cevichería - Acceso para Personal</p>
+    </div>
+</div>
+
+<script>
+// Variables globales para auth
+let authToken = localStorage.getItem('authToken');
+let currentUser = null;
+
+// Intentar obtener usuario actual si hay token
+if (authToken) {
+    try {
+        // Intentar obtener perfil del usuario
+        fetch('/api/auth/profile', {
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.user) {
+                currentUser = data.user;
+            }
+        })
+        .catch(error => {
+            console.log('No se pudo obtener perfil del usuario');
+            authToken = null;
+            localStorage.removeItem('authToken');
+        });
+    } catch (error) {
+        authToken = null;
+        localStorage.removeItem('authToken');
+    }
+}
+
+// Función showAlert compatible
+function showAlert(message, type = 'info') {
+    alert(message);
+}
+
+// Redirigir si ya está autenticado según su rol
+document.addEventListener('DOMContentLoaded', function() {
+    if (authToken && currentUser) {
+        switch(currentUser.role) {
+            case 'admin':
+                window.location.href = '/admin/';
+                break;
+            case 'mozo':  // Cambiado de 'waiter' a 'mozo'
+                window.location.href = '/mozo/';
+                break;
+            case 'cocina':  // Cambiado de 'kitchen' a 'cocina'
+                window.location.href = '/cocina/';
+                break;
+            case 'cajero':  // Cambiado de 'cashier' a 'cajero'
+                window.location.href = '/caja/';
+                break;
+            default:
+                showAlert('Rol no reconocido, contacte al administrador', 'warning');
+                console.log('Rol recibido:', currentUser.role); // Debug
+        }
+    }
+});
+
+// Manejar inicio de sesión
+async function handleLogin(event) {
+    event.preventDefault();
+    
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    
+    try {
+        const response = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ username, password })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            // Guardar token y datos del usuario
+            localStorage.setItem('authToken', data.access_token);
+            authToken = data.access_token;
+            currentUser = data.user;
+            
+            console.log('LOGIN DEBUG: Usuario logueado:', data.user);
+            console.log('LOGIN DEBUG: Rol del usuario:', data.user.role);
+            
+            // Redirección inmediata según el rol del usuario
+            let redirectUrl = '';
+            switch(data.user.role) {
+                case 'admin':
+                    redirectUrl = '/admin/';
+                    break;
+                case 'mozo':
+                    redirectUrl = '/mozo/';
+                    break;
+                case 'cocina':
+                    redirectUrl = '/cocina/';
+                    break;
+                case 'cajero':
+                    redirectUrl = '/caja/';
+                    break;
+                default:
+                    console.log('LOGIN DEBUG: Rol no reconocido:', data.user.role);
+                    alert('Rol no reconocido, contacte al administrador');
+                    return; // Salir sin redireccionar
+            }
+            
+            console.log('LOGIN DEBUG: Redirigiendo a:', redirectUrl);
+            alert('Login exitoso! Redirigiendo a ' + redirectUrl);
+            
+            // Redirección inmediata sin setTimeout
+            window.location.href = redirectUrl;
+        } else {
+            // Verificar si es el mensaje de sesión remota
+            if (data.message && data.message.includes('Ya tienes una sesión activa')) {
+                // Mostrar modal para confirmar cierre de sesiones remotas
+                if (confirm(data.message)) {
+                    // Reintentar login con force_new=true
+                    try {
+                        const retryResponse = await fetch('/api/auth/login', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ username, password, force_new: true })
+                        });
+                        
+                        const retryData = await retryResponse.json();
+                        
+                        if (retryResponse.ok) {
+                            // Guardar token y datos del usuario
+                            localStorage.setItem('authToken', retryData.access_token);
+                            authToken = retryData.access_token;
+                            currentUser = retryData.user;
+                            
+                            console.log('LOGIN DEBUG (retry): Usuario logueado:', retryData.user);
+                            console.log('LOGIN DEBUG (retry): Rol del usuario:', retryData.user.role);
+                            
+                            // Redirección inmediata según el rol del usuario
+                            let redirectUrl = '';
+                            switch(retryData.user.role) {
+                                case 'admin':
+                                    redirectUrl = '/admin/';
+                                    break;
+                                case 'mozo':
+                                    redirectUrl = '/mozo/';
+                                    break;
+                                case 'cocina':
+                                    redirectUrl = '/cocina/';
+                                    break;
+                                case 'cajero':
+                                    redirectUrl = '/caja/';
+                                    break;
+                                default:
+                                    console.log('LOGIN DEBUG (retry): Rol no reconocido:', retryData.user.role);
+                                    alert('Rol no reconocido, contacte al administrador');
+                                    return; // Salir sin redireccionar
+                            }
+                            
+                            console.log('LOGIN DEBUG (retry): Redirigiendo a:', redirectUrl);
+                            alert('Sesiones remotas cerradas. Login exitoso! Redirigiendo a ' + redirectUrl);
+                            
+                            // Redirección inmediata sin setTimeout
+                            window.location.href = redirectUrl;
+                        } else {
+                            alert(retryData.message || 'Error al cerrar sesiones remotas');
+                        }
+                    } catch (retryError) {
+                        console.error('Error al reintentar login:', retryError);
+                        alert('Error de conexión al reintentar');
+                    }
+                }
+            } else {
+                alert(data.message || 'Error en el inicio de sesión');
+            }
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error de conexión');
+    }
+}
+
+// Funcionalidad para mostrar/ocultar contraseña
+document.addEventListener('DOMContentLoaded', function() {
+    const togglePassword = document.getElementById('togglePassword');
+    const passwordInput = document.getElementById('password');
+    
+    togglePassword.addEventListener('click', function() {
+        const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+        passwordInput.setAttribute('type', type);
+        
+        // Cambiar el icono del ojo
+        if (type === 'password') {
+            togglePassword.textContent = '👁️';
+            togglePassword.title = 'Mostrar contraseña';
+        } else {
+            togglePassword.textContent = '🙈';
+            togglePassword.title = 'Ocultar contraseña';
+        }
+    });
+});
+</script>
+{% endblock %}

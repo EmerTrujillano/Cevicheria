@@ -1,0 +1,456 @@
+{% extends "base.html" %}
+{% block title %}Gestión de Usuarios - Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1><i class="fas fa-users"></i> Gestión de Usuarios</h1>
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createUserModal">
+                    <i class="fas fa-plus"></i> Crear Usuario
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="row mb-3">
+        <div class="col-md-4">
+            <input type="text" id="searchUsers" class="form-control" placeholder="Buscar por nombre o usuario...">
+        </div>
+        <div class="col-md-3">
+            <select id="filterRole" class="form-select">
+                <option value="">Todos los roles</option>
+                <option value="admin">Administrador</option>
+                <option value="waiter">Mozo</option>
+                <option value="kitchen">Cocina</option>
+                <option value="cashier">Cajero</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <select id="filterStatus" class="form-select">
+                <option value="">Todos los estados</option>
+                <option value="active">Con sesiones activas</option>
+                <option value="inactive">Sin sesiones activas</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <button class="btn btn-outline-secondary w-100" onclick="refreshUsers()">
+                <i class="fas fa-sync-alt"></i> Actualizar
+            </button>
+        </div>
+    </div>
+
+    <!-- Tabla de usuarios -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Usuario</th>
+                                    <th>Nombre Completo</th>
+                                    <th>Rol</th>
+                                    <th>Estación</th>
+                                    <th>Sesiones Activas</th>
+                                    <th>Último Login</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersTableBody">
+                                <!-- Usuarios se cargarán aquí -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Crear Usuario -->
+<div class="modal fade" id="createUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Crear Nuevo Usuario</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createUserForm">
+                    <div class="mb-3">
+                        <label class="form-label">Nombre de Usuario *</label>
+                        <input type="text" class="form-control" name="username" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Nombre Completo *</label>
+                        <input type="text" class="form-control" name="full_name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Contraseña *</label>
+                        <input type="password" class="form-control" name="password" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Rol *</label>
+                        <select class="form-select" name="role" required onchange="toggleEstacionField(this)">
+                            <option value="">Seleccionar rol</option>
+                            <option value="admin">Administrador</option>
+                            <option value="waiter">Mozo</option>
+                            <option value="kitchen">Cocina</option>
+                            <option value="cashier">Cajero</option>
+                        </select>
+                    </div>
+                    <div class="mb-3" id="estacionField" style="display: none;">
+                        <label class="form-label">Estación</label>
+                        <select class="form-select" name="estacion">
+                            <option value="">Seleccionar estación</option>
+                            <option value="frio">Frío</option>
+                            <option value="caliente">Caliente</option>
+                            <option value="barra">Barra</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="createUser()">Crear Usuario</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Editar Usuario -->
+<div class="modal fade" id="editUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Editar Usuario</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editUserForm">
+                    <input type="hidden" name="user_id">
+                    <div class="mb-3">
+                        <label class="form-label">Nombre de Usuario</label>
+                        <input type="text" class="form-control" name="username" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Nombre Completo</label>
+                        <input type="text" class="form-control" name="full_name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Nueva Contraseña (dejar vacío para no cambiar)</label>
+                        <input type="password" class="form-control" name="password">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Rol</label>
+                        <select class="form-select" name="role" required onchange="toggleEstacionFieldEdit(this)">
+                            <option value="admin">Administrador</option>
+                            <option value="waiter">Mozo</option>
+                            <option value="kitchen">Cocina</option>
+                            <option value="cashier">Cajero</option>
+                        </select>
+                    </div>
+                    <div class="mb-3" id="estacionFieldEdit">
+                        <label class="form-label">Estación</label>
+                        <select class="form-select" name="estacion">
+                            <option value="">Seleccionar estación</option>
+                            <option value="frio">Frío</option>
+                            <option value="caliente">Caliente</option>
+                            <option value="barra">Barra</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="updateUser()">Actualizar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let users = [];
+let editingUserId = null;
+
+// Cargar usuarios al inicializar la página
+document.addEventListener('DOMContentLoaded', function() {
+    loadUsers();
+    setupFilters();
+});
+
+async function loadUsers() {
+    try {
+        const response = await authenticatedFetch('/admin/api/users');
+        const data = await response.json();
+        
+        if (data.success) {
+            users = data.data;
+            renderUsers(users);
+        } else {
+            showAlert('Error al cargar usuarios: ' + data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showAlert('Error al cargar usuarios', 'error');
+    }
+}
+
+function renderUsers(usersToRender) {
+    const tbody = document.getElementById('usersTableBody');
+    tbody.innerHTML = '';
+    
+    usersToRender.forEach(user => {
+        const lastLogin = user.last_login ? 
+            new Date(user.last_login).toLocaleString() : 
+            'Nunca';
+        
+        const sessionsIndicator = user.active_sessions > 0 ? 
+            `<span class="badge bg-success">${user.active_sessions}</span>` :
+            `<span class="badge bg-secondary">0</span>`;
+        
+        const row = `
+            <tr>
+                <td>
+                    <strong>${user.username}</strong>
+                    ${user.active_sessions > 0 ? '<i class="fas fa-circle text-success ms-1" title="Online"></i>' : '<i class="fas fa-circle text-muted ms-1" title="Offline"></i>'}
+                </td>
+                <td>${user.full_name || '-'}</td>
+                <td>
+                    <span class="badge bg-${getRoleBadgeColor(user.role)}">${getRoleDisplayName(user.role)}</span>
+                </td>
+                <td>${user.estacion || '-'}</td>
+                <td>${sessionsIndicator}</td>
+                <td>${lastLogin}</td>
+                <td>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-primary" onclick="editUser(${user.id})" title="Editar">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        ${user.active_sessions > 0 ? 
+                            `<button class="btn btn-outline-warning" onclick="closeUserSessions(${user.id})" title="Cerrar sesiones">
+                                <i class="fas fa-sign-out-alt"></i>
+                            </button>` : ''
+                        }
+                        <button class="btn btn-outline-danger" onclick="deleteUser(${user.id})" title="Eliminar">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+        tbody.insertAdjacentHTML('beforeend', row);
+    });
+}
+
+function getRoleBadgeColor(role) {
+    const colors = {
+        'admin': 'danger',
+        'waiter': 'primary',
+        'kitchen': 'warning',
+        'cashier': 'success'
+    };
+    return colors[role] || 'secondary';
+}
+
+function getRoleDisplayName(role) {
+    const names = {
+        'admin': 'Administrador',
+        'waiter': 'Mozo',
+        'kitchen': 'Cocina',
+        'cashier': 'Cajero'
+    };
+    return names[role] || role;
+}
+
+function toggleEstacionField(selectElement) {
+    const estacionField = document.getElementById('estacionField');
+    estacionField.style.display = selectElement.value === 'kitchen' ? 'block' : 'none';
+}
+
+function toggleEstacionFieldEdit(selectElement) {
+    const estacionField = document.getElementById('estacionFieldEdit');
+    estacionField.style.display = selectElement.value === 'kitchen' ? 'block' : 'none';
+}
+
+async function createUser() {
+    const form = document.getElementById('createUserForm');
+    const formData = new FormData(form);
+    const userData = Object.fromEntries(formData);
+    
+    try {
+        const response = await authenticatedFetch('/admin/api/users', {
+            method: 'POST',
+            body: JSON.stringify(userData)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showAlert('Usuario creado exitosamente', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('createUserModal')).hide();
+            form.reset();
+            loadUsers();
+        } else {
+            showAlert('Error: ' + data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showAlert('Error al crear usuario', 'error');
+    }
+}
+
+function editUser(userId) {
+    const user = users.find(u => u.id === userId);
+    if (!user) return;
+    
+    editingUserId = userId;
+    const form = document.getElementById('editUserForm');
+    
+    form.user_id.value = user.id;
+    form.username.value = user.username;
+    form.full_name.value = user.full_name || '';
+    form.role.value = user.role;
+    form.estacion.value = user.estacion || '';
+    
+    toggleEstacionFieldEdit(form.role);
+    
+    const modal = new bootstrap.Modal(document.getElementById('editUserModal'));
+    modal.show();
+}
+
+async function updateUser() {
+    const form = document.getElementById('editUserForm');
+    const formData = new FormData(form);
+    const userData = Object.fromEntries(formData);
+    
+    // Remover campos vacíos
+    Object.keys(userData).forEach(key => {
+        if (userData[key] === '') {
+            delete userData[key];
+        }
+    });
+    
+    try {
+        const response = await authenticatedFetch(`/admin/api/users/${editingUserId}`, {
+            method: 'PUT',
+            body: JSON.stringify(userData)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showAlert('Usuario actualizado exitosamente', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('editUserModal')).hide();
+            loadUsers();
+        } else {
+            showAlert('Error: ' + data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showAlert('Error al actualizar usuario', 'error');
+    }
+}
+
+async function deleteUser(userId) {
+    const user = users.find(u => u.id === userId);
+    if (!user) return;
+    
+    if (!confirm(`¿Estás seguro de que deseas eliminar al usuario "${user.username}"?`)) {
+        return;
+    }
+    
+    try {
+        const response = await authenticatedFetch(`/admin/api/users/${userId}`, {
+            method: 'DELETE'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showAlert('Usuario eliminado exitosamente', 'success');
+            loadUsers();
+        } else {
+            showAlert('Error: ' + data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showAlert('Error al eliminar usuario', 'error');
+    }
+}
+
+async function closeUserSessions(userId) {
+    const user = users.find(u => u.id === userId);
+    if (!user) return;
+    
+    if (!confirm(`¿Cerrar todas las sesiones de "${user.username}"?`)) {
+        return;
+    }
+    
+    try {
+        const response = await authenticatedFetch(`/admin/api/users/${userId}/close-sessions`, {
+            method: 'POST'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showAlert(data.message, 'success');
+            loadUsers();
+        } else {
+            showAlert('Error: ' + data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showAlert('Error al cerrar sesiones', 'error');
+    }
+}
+
+function setupFilters() {
+    const searchInput = document.getElementById('searchUsers');
+    const roleFilter = document.getElementById('filterRole');
+    const statusFilter = document.getElementById('filterStatus');
+    
+    function applyFilters() {
+        let filtered = users;
+        
+        // Filtro de búsqueda
+        const searchTerm = searchInput.value.toLowerCase();
+        if (searchTerm) {
+            filtered = filtered.filter(user => 
+                user.username.toLowerCase().includes(searchTerm) ||
+                (user.full_name && user.full_name.toLowerCase().includes(searchTerm))
+            );
+        }
+        
+        // Filtro de rol
+        const selectedRole = roleFilter.value;
+        if (selectedRole) {
+            filtered = filtered.filter(user => user.role === selectedRole);
+        }
+        
+        // Filtro de estado
+        const selectedStatus = statusFilter.value;
+        if (selectedStatus === 'active') {
+            filtered = filtered.filter(user => user.active_sessions > 0);
+        } else if (selectedStatus === 'inactive') {
+            filtered = filtered.filter(user => user.active_sessions === 0);
+        }
+        
+        renderUsers(filtered);
+    }
+    
+    searchInput.addEventListener('input', applyFilters);
+    roleFilter.addEventListener('change', applyFilters);
+    statusFilter.addEventListener('change', applyFilters);
+}
+
+function refreshUsers() {
+    loadUsers();
+}
+</script>
+{% endblock %}

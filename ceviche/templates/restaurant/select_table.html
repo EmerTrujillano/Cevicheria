@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}Seleccionar Mesa - Cevichería{% endblock %}
+{% block content %}
+<div class="container py-4">
+    <h1 class="text-center mb-4">Selecciona tu Mesa</h1>
+    <p class="text-center text-muted">Elige una mesa disponible para realizar tu pedido</p>
+    
+    <div class="row" id="mesas-container">
+        {% for table in tables %}
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card table-card" onclick="selectTable({{ table.numero }})">
+                <div class="card-body text-center">
+                    <i class="fas fa-table fa-3x text-success mb-3"></i>
+                    <h5>Mesa {{ table.numero }}</h5>
+                    <p class="text-muted">Capacidad: {{ table.capacidad }} personas</p>
+                    <span class="badge bg-success">Disponible</span>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    {% if not tables %}
+    <div class="text-center">
+        <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle"></i>
+            No hay mesas disponibles en este momento. Por favor, intenta más tarde.
+        </div>
+        <a href="{{ url_for('restaurant_qr.restaurant_home') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Volver
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Modal para confirmar selección -->
+<div class="modal fade" id="confirmModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmar Mesa</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Deseas seleccionar la <strong>Mesa <span id="selectedTableNumber"></span></strong>?</p>
+                <div class="mb-3">
+                    <label for="customerName" class="form-label">Nombre (opcional):</label>
+                    <input type="text" class="form-control" id="customerName" placeholder="Tu nombre">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="confirmSelection()">Confirmar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.table-card {
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+.table-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+</style>
+
+<script>
+let selectedTable = null;
+
+function selectTable(tableNumber) {
+    selectedTable = tableNumber;
+    document.getElementById('selectedTableNumber').textContent = tableNumber;
+    
+    // Mostrar modal de confirmación
+    const modal = new bootstrap.Modal(document.getElementById('confirmModal'));
+    modal.show();
+}
+
+function confirmSelection() {
+    if (!selectedTable) return;
+    
+    const customerName = document.getElementById('customerName').value;
+    
+    fetch('/restaurant/api/select-table', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            table_number: selectedTable,
+            customer_name: customerName
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Redirigir al menú de la mesa
+            window.location.href = `/restaurant/table/${selectedTable}`;
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error al seleccionar mesa');
+    });
+}
+
+// Actualizar estado de mesas cada 10 segundos
+setInterval(function() {
+    fetch('/restaurant/api/tables')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Actualizar lista de mesas
+                location.reload();
+            }
+        })
+        .catch(error => console.error('Error:', error));
+}, 10000);
+</script>
+{% endblock %}

@@ -65,12 +65,65 @@
         .rating {
             color: var(--accent-color);
         }
-        .category-header {
-            background: linear-gradient(135deg, var(--primary-color), var(--deep-blue));
+                .category-header {
+            background: linear-gradient(135deg, var(--primary-color), var(--ocean-blue));
             color: white;
-            padding: 15px;
-            border-radius: 10px 10px 0 0;
-            margin-top: 30px;
+            padding: 15px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 0;
+            user-select: none;
+        }
+        .category-header:hover {
+            background: linear-gradient(135deg, var(--deep-blue), var(--primary-color));
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,106,150,0.2);
+        }
+        .category-header i {
+            transition: transform 0.3s ease;
+        }
+        .category-header.collapsed i {
+            transform: rotate(-90deg);
+        }
+        .category-content {
+            overflow: hidden;
+            transition: max-height 0.4s ease, padding 0.4s ease, opacity 0.3s ease;
+            max-height: 0;
+            padding: 0 20px;
+            opacity: 0;
+            background: rgba(255,255,255,0.95);
+            border-radius: 0 0 10px 10px;
+        }
+        .category-content.show {
+            max-height: 3000px;
+            padding: 20px;
+            opacity: 1;
+        }
+        .product-card {
+            transition: transform 0.2s;
+            border: none;
+            box-shadow: 0 2px 10px rgba(0,106,150,0.1);
+            border-left: 4px solid var(--ocean-blue);
+            margin-bottom: 15px;
+        }
+        .product-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,106,150,0.15);
+            border-left-color: var(--primary-color);
+        }
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        @media (max-width: 768px) {
+            .product-grid {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
         }
         .navbar-brand {
             font-weight: bold;
@@ -186,29 +239,41 @@
                 if (data.success) {
                     renderMenu(data.data);
                 } else {
-                    showError('Error al cargar el menú');
+                    showError('Error al cargar el menú: ' + (data.message || 'desconocido'));
                 }
             } catch (error) {
-                showError('Error de conexión');
+                showError('Error de conexión: ' + error.message);
             }
         }
         
         // Renderizar menú
         function renderMenu(categories) {
             const container = document.getElementById('menuContainer');
+            
+            if (!container) {
+                console.error('ERROR: elemento menuContainer no encontrado!');
+                return;
+            }
+            
             let html = '';
             
-            categories.forEach(categoryData => {
+            categories.forEach((categoryData, index) => {
                 const category = categoryData.category;
                 const products = categoryData.products;
                 
                 html += `
                     <div class="category-section mb-4">
-                        <div class="category-header">
-                            <h3 class="mb-1">${category.name}</h3>
-                            <p class="mb-0 opacity-75">${category.description}</p>
+                        <div class="category-header ${index > 0 ? 'collapsed' : ''}" onclick="toggleCategory(this)">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h3 class="mb-1">${category.name}</h3>
+                                    <p class="mb-0 opacity-75">${category.description || ''}</p>
+                                </div>
+                                <i class="fas fa-chevron-down"></i>
+                            </div>
                         </div>
-                        <div class="row g-3 p-3 bg-white">
+                        <div class="category-content ${index === 0 ? 'show' : ''}">
+                            <div class="product-grid">
                 `;
                 
                 products.forEach(product => {
@@ -216,6 +281,7 @@
                 });
                 
                 html += `
+                            </div>
                         </div>
                     </div>
                 `;
@@ -224,64 +290,213 @@
             container.innerHTML = html;
         }
         
+        // Función para alternar categorías
+        function toggleCategory(header) {
+            const content = header.nextElementSibling;
+            const icon = header.querySelector('i');
+            
+            // Cerrar otras categorías si están abiertas
+            document.querySelectorAll('.category-content.show').forEach(openContent => {
+                if (openContent !== content) {
+                    openContent.classList.remove('show');
+                    openContent.previousElementSibling.classList.add('collapsed');
+                }
+            });
+            
+            // Alternar la categoría actual
+            content.classList.toggle('show');
+            header.classList.toggle('collapsed');
+        }
+        
+        // Función para mostrar etiquetas con emojis
+        function getTagDisplay(tags) {
+            if (!tags) return '';
+            
+            // Manejar tags como array o string
+            let tagArray;
+            if (Array.isArray(tags)) {
+                tagArray = tags.filter(tag => tag && tag.trim());
+            } else if (typeof tags === 'string' && tags.trim()) {
+                tagArray = tags.split(',').map(t => t.trim()).filter(t => t);
+            } else {
+                return '';
+            }
+            
+            return tagArray.map(tag => {
+                // Si ya tiene emoji, usarlo directamente
+                if (tag.includes('⭐') || tag.includes('🌶️') || tag.includes('🏆') || tag.includes('🆕')) {
+                    return `<span class="badge bg-warning text-dark me-1 mb-1">${tag}</span>`;
+                }
+                // Mapear etiquetas antiguas a nuevas con emojis
+                const tagMap = {
+                    'picante': '🌶️ Picante',
+                    'recomendado': '🏆 Recomendado', 
+                    'nuevo': '🆕 Nuevo',
+                    'especialidad': '⭐ Especialidad de la casa',
+                    'especialidad de la casa': '⭐ Especialidad de la casa',
+                    'mas_vendido': '🏆 Recomendado'
+                };
+                const mappedTag = tagMap[tag.toLowerCase()] || tag;
+                return `<span class="badge bg-warning text-dark me-1 mb-1">${mappedTag}</span>`;
+            }).join('');
+        }
+        
         // Renderizar tarjeta de producto
         function renderProductCard(product) {
-            const tags = product.tags.map(tag => 
-                `<span class="tag tag-${tag}">${getTagName(tag)}</span>`
-            ).join('');
+            // Procesar etiquetas con emojis
+            let tagsBadges = '';
+            let isSpicy = false;
             
+            // Manejar tags como array o string
+            if (product.tags && product.tags.length > 0) {
+                let tags;
+                
+                // Si es array, usarlo directamente; si es string, dividirlo
+                if (Array.isArray(product.tags)) {
+                    tags = product.tags.filter(tag => tag && tag.trim());
+                } else if (typeof product.tags === 'string' && product.tags.trim()) {
+                    tags = product.tags.split(',').map(tag => tag.trim()).filter(tag => tag);
+                } else {
+                    tags = [];
+                }
+                
+                tagsBadges = tags.map(tag => {
+                    // Verificar si es picante
+                    if (tag.includes('🌶️') || tag.toLowerCase().includes('picante')) {
+                        isSpicy = true;
+                    }
+                    
+                    // Si ya tiene emoji, usarlo directamente
+                    if (tag.includes('⭐') || tag.includes('🌶️') || tag.includes('🏆') || tag.includes('🆕')) {
+                        return `<span class="badge bg-warning text-dark me-1 mb-1">${tag}</span>`;
+                    }
+                    // Mapear etiquetas antiguas a nuevas con emojis
+                    const tagMap = {
+                        'picante': '🌶️ Picante',
+                        'recomendado': '🏆 Recomendado', 
+                        'nuevo': '🆕 Nuevo',
+                        'especialidad': '⭐ Especialidad de la casa',
+                        'especialidad de la casa': '⭐ Especialidad de la casa',
+                        'mas_vendido': '🏆 Recomendado'
+                    };
+                    const mappedTag = tagMap[tag.toLowerCase()] || tag;
+                    
+                    // Marcar como picante si es necesario
+                    if (tag.toLowerCase().includes('picante')) {
+                        isSpicy = true;
+                    }
+                    
+                    return `<span class="badge bg-warning text-dark me-1 mb-1">${mappedTag}</span>`;
+                }).join('');
+            }
+
             const rating = product.average_rating > 0 ? 
-                `<div class="rating">
+                `<div class="rating mb-2">
                     ${generateStars(product.average_rating)}
                     <small class="text-muted">(${product.reviews_count})</small>
                 </div>` : '';
-            
+
+            // Limpiar ingredientes quitando "Ingredientes:" si existe
+            let cleanIngredients = '';
+            if (product.ingredients && product.ingredients.length > 0) {
+                let ingredientsText = Array.isArray(product.ingredients) ? 
+                    product.ingredients.join(', ') : product.ingredients.toString();
+                
+                // Quitar "Ingredientes:" del inicio si existe (case insensitive, con o sin dos puntos)
+                cleanIngredients = ingredientsText
+                    .replace(/^ingredientes:?\s*/i, '')
+                    .replace(/^ingredients:?\s*/i, '')
+                    .trim();
+            }
+
+            // Mostrar nivel de picante si el plato es picante
+            let spiceLevelDisplay = '';
+            if (isSpicy && product.spice_level) {
+                const spiceLevels = {
+                    'mild': 'Suave 🌶️',
+                    'medium': 'Medio 🌶️🌶️',
+                    'hot': 'Picante 🌶️🌶️🌶️',
+                    'very_hot': 'Muy Picante 🌶️🌶️🌶️🌶️'
+                };
+                spiceLevelDisplay = `
+                    <div class="mb-2">
+                        <small class="text-danger fw-bold">
+                            <i class="fas fa-fire"></i> ${spiceLevels[product.spice_level] || product.spice_level}
+                        </small>
+                    </div>
+                `;
+            }
+
             return `
-                <div class="col-md-6 col-lg-4">
-                    <div class="card product-card h-100">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                <h5 class="card-title mb-1">${product.name}</h5>
-                                <span class="badge bg-primary fs-6">S/ ${product.price}</span>
-                            </div>
-                            
-                            ${tags}
-                            
-                            <p class="card-text text-muted small mt-2">${product.description}</p>
-                            
-                            ${product.ingredients.length > 0 ? 
-                                `<p class="small text-secondary">
-                                    <i class="fas fa-leaf"></i> ${product.ingredients.join(', ')}
-                                </p>` : ''
-                            }
-                            
-                            ${rating}
-                            
-                            <div class="mt-2">
-                                <small class="text-muted">
-                                    <i class="fas fa-clock"></i> ${product.preparation_time} min
-                                    ${getSpiceIcon(product.spice_level)}
-                                </small>
-                            </div>
-                            
-                            ${!product.is_available ? 
-                                '<div class="mt-2"><span class="badge bg-danger">Agotado</span></div>' : ''
-                            }
+                <div class="product-card h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h5 class="card-title mb-1">${product.name}</h5>
+                            <span class="badge bg-primary fs-6">S/ ${product.price}</span>
                         </div>
+                        
+                        ${tagsBadges}
+                        
+                        <p class="card-text text-muted small mt-2">${product.description || ''}</p>
+                        
+                        ${cleanIngredients ? 
+                            `<p class="small text-secondary mb-2">
+                                <i class="fas fa-leaf"></i> ${cleanIngredients}
+                            </p>` : ''
+                        }
+                        
+                        ${spiceLevelDisplay}
+                        
+                        ${rating}
+                        
+                        <div class="mt-2">
+                            <small class="text-muted">
+                                <i class="fas fa-clock"></i> ${product.preparation_time} min
+                            </small>
+                        </div>
+                        
+                        ${!product.is_available ? 
+                            '<div class="mt-2"><span class="badge bg-danger">Agotado</span></div>' : ''
+                        }
                     </div>
                 </div>
             `;
         }
         
         // Funciones auxiliares
-        function getTagName(tag) {
-            const tagNames = {
-                'picante': 'Picante',
-                'recomendado': 'Recomendado',
-                'nuevo': 'Nuevo',
-                'mas_vendido': 'Más Vendido'
+        function getTagDisplay(tags) {
+            if (!tags) return '';
+            
+            // Si tags es string, intentar procesarlo
+            if (typeof tags === 'string') {
+                // Verificar si ya contiene emojis
+                if (tags.includes('⭐') || tags.includes('🌶️') || tags.includes('🏆') || tags.includes('🆕')) {
+                    return `<div class="mb-2"><span class="badge bg-warning text-dark">${tags}</span></div>`;
+                }
+                tags = [tags];
+            }
+            
+            // Mapear tags a etiquetas con emojis
+            const tagMap = {
+                'especialidad': '⭐ Especialidad de la casa',
+                'especialidad de la casa': '⭐ Especialidad de la casa',
+                'picante': '🌶️ Picante',
+                'recomendado': '🏆 Recomendado',
+                'nuevo': '🆕 Nuevo',
+                'mas_vendido': '🏆 Recomendado',
+                'best_seller': '🏆 Recomendado'
             };
-            return tagNames[tag] || tag;
+            
+            const displayTags = tags.map(tag => {
+                const lowerTag = tag.toLowerCase().trim();
+                return tagMap[lowerTag] || tag;
+            }).filter(tag => tag);
+            
+            if (displayTags.length === 0) return '';
+            
+            return `<div class="mb-2">${displayTags.map(tag => 
+                `<span class="badge bg-warning text-dark me-1">${tag}</span>`
+            ).join('')}</div>`;
         }
         
         function generateStars(rating) {

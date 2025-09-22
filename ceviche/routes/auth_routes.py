@@ -225,7 +225,7 @@ def verify_session():
         # Verificar si hay una sesión activa en la base de datos
         active_session = UserSession.query.filter_by(
             user_id=current_user.id,
-            status='active'
+            is_active=True
         ).first()
         
         if not active_session:

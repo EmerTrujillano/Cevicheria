@@ -1,0 +1,1603 @@
+{% extends "base.html" %}
+{% block title %}Panel Administrativo - Cevichería{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1><i class="fas fa-shield-alt"></i> Panel Administrativo</h1>
+                    <p class="text-muted">Gestión completa del sistema - Control total</p>
+                </div>
+                <div>
+                    <span class="badge bg-primary fs-6">Admin: {{ session.get('username', 'admin') }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navegación Admin -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-2">
+                            <button class="btn btn-primary w-100" onclick="showSection('dashboard')">
+                                <i class="fas fa-tachometer-alt"></i><br>Dashboard
+                            </button>
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-outline-primary w-100" onclick="showSection('usuarios')">
+                                <i class="fas fa-users-cog"></i><br>Usuarios
+                            </button>
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-outline-primary w-100" onclick="showSection('sesiones')">
+                                <i class="fas fa-user-clock"></i><br>Sesiones
+                            </button>
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-outline-primary w-100" onclick="showSection('menu')">
+                                <i class="fas fa-utensils"></i><br>Menú
+                            </button>
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-outline-primary w-100" onclick="showSection('reportes')">
+                                <i class="fas fa-chart-bar"></i><br>Reportes
+                            </button>
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-outline-danger w-100" onclick="showSection('sistema')">
+                                <i class="fas fa-cogs"></i><br>Sistema
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SECCIÓN: Dashboard -->
+    <div id="section-dashboard" class="admin-section">
+        <!-- Estadísticas rápidas -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card bg-primary text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h3 id="mesas-ocupadas">-</h3>
+                                <p class="mb-0">Mesas Ocupadas</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-table fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-success text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h3 id="sesiones-activas">-</h3>
+                                <p class="mb-0">Usuarios Online</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-users fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-warning text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h3 id="pedidos-pendientes">-</h3>
+                                <p class="mb-0">En Cocina</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-clock fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-info text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h3 id="ventas-hoy">$-</h3>
+                                <p class="mb-0">Ventas Hoy</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-dollar-sign fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Monitor de actividad -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-eye"></i> Actividad en Tiempo Real</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="actividad-tiempo-real">
+                            <p class="text-muted">Cargando actividad...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SECCIÓN: Gestión de Usuarios -->
+    <div id="section-usuarios" class="admin-section" style="display: none;">
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-users"></i> Lista de Usuarios</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th style="cursor: pointer;" onclick="sortTable('username')">
+                                            Usuario <i class="fas fa-sort" id="sort-username"></i>
+                                        </th>
+                                        <th style="cursor: pointer;" onclick="sortTable('role')">
+                                            Rol <i class="fas fa-sort" id="sort-role"></i>
+                                        </th>
+                                        <th style="cursor: pointer;" onclick="sortTable('status')">
+                                            Estado <i class="fas fa-sort" id="sort-status"></i>
+                                        </th>
+                                        <th style="cursor: pointer;" onclick="sortTable('last_login')">
+                                            Última Conexión <i class="fas fa-sort" id="sort-last_login"></i>
+                                        </th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabla-usuarios">
+                                    <!-- Se llena dinámicamente -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-user-plus"></i> Crear Usuario</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="form-nuevo-usuario">
+                            <div class="mb-3">
+                                <label class="form-label">Nombre de Usuario</label>
+                                <input type="text" class="form-control" name="username" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Contraseña</label>
+                                <div class="input-group">
+                                    <input type="password" class="form-control" name="password" id="password-input" required>
+                                    <button class="btn btn-outline-secondary" type="button" id="toggle-password">
+                                        <i class="fas fa-eye" id="eye-icon"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Rol</label>
+                                <select class="form-select" name="role" id="role-select" required onchange="toggleEstacionField()">
+                                    <option value="mozo">Mozo/Mesero</option>
+                                    <option value="cocina">Cocina</option>
+                                    <option value="cajero">Cajero</option>
+                                    <option value="admin">Administrador</option>
+                                </select>
+                            </div>
+                            <div class="mb-3" id="estacion-field" style="display: none;">
+                                <label class="form-label">Estación de Cocina</label>
+                                <select class="form-select" name="estacion">
+                                    <option value="">Seleccionar estación...</option>
+                                    <option value="frios">Estación de Fríos</option>
+                                    <option value="calientes">Estación de Calientes</option>
+                                    <option value="frituras">Estación de Frituras</option>
+                                    <option value="bebidas">Estación de Bebidas</option>
+                                    <option value="postres">Estación de Postres</option>
+                                    <option value="acompañamientos">Estación de Acompañamientos</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-success w-100">
+                                <i class="fas fa-plus"></i> Crear Usuario
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SECCIÓN: Control de Sesiones -->
+    <div id="section-sesiones" class="admin-section" style="display: none;">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-user-clock"></i> Sesiones Activas - Control Remoto</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Usuario</th>
+                                <th>Rol</th>
+                                <th>IP</th>
+                                <th>Conectado desde</th>
+                                <th>Última actividad</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-sesiones">
+                            <!-- Se llena dinámicamente -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SECCIÓN: Gestión de Menú -->
+    <div id="section-menu" class="admin-section" style="display: none;">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-utensils"></i> Gestión de Menú</h5>
+            </div>
+            <div class="card-body">
+                <!-- Tabs para Categorías y Productos -->
+                <ul class="nav nav-tabs" id="menuTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="categorias-tab" data-bs-toggle="tab" data-bs-target="#categorias-panel" type="button" role="tab">
+                            <i class="fas fa-tags"></i> Categorías
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="productos-tab" data-bs-toggle="tab" data-bs-target="#productos-panel" type="button" role="tab">
+                            <i class="fas fa-hamburger"></i> Productos
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content" id="menuTabContent">
+                    <!-- PANEL DE CATEGORÍAS -->
+                    <div class="tab-pane fade show active" id="categorias-panel" role="tabpanel">
+                        <div class="mt-3">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="mb-0">Categorías del Menú</h6>
+                                <button class="btn btn-primary btn-sm" onclick="abrirModalCategoria()">
+                                    <i class="fas fa-plus"></i> Nueva Categoría
+                                </button>
+                            </div>
+                            
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Nombre</th>
+                                            <th>Descripción</th>
+                                            <th>Estación</th>
+                                            <th>Productos</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tabla-categorias">
+                                        <tr>
+                                            <td colspan="6" class="text-center">Cargando categorías...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- PANEL DE PRODUCTOS -->
+                    <div class="tab-pane fade" id="productos-panel" role="tabpanel">
+                        <div class="mt-3">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="mb-0">Productos del Menú</h6>
+                                <button class="btn btn-primary btn-sm" onclick="abrirModalProducto()">
+                                    <i class="fas fa-plus"></i> Nuevo Producto
+                                </button>
+                            </div>
+                            
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th style="cursor: pointer;" onclick="sortProductsBy('id')">
+                                                ID <i id="sort-product-id" class="fas fa-sort"></i>
+                                            </th>
+                                            <th style="cursor: pointer;" onclick="sortProductsBy('name')">
+                                                Nombre <i id="sort-product-name" class="fas fa-sort"></i>
+                                            </th>
+                                            <th style="cursor: pointer;" onclick="sortProductsBy('category')">
+                                                Categoría <i id="sort-product-category" class="fas fa-sort"></i>
+                                            </th>
+                                            <th style="cursor: pointer;" onclick="sortProductsBy('price')">
+                                                Precio <i id="sort-product-price" class="fas fa-sort"></i>
+                                            </th>
+                                            <th style="cursor: pointer;" onclick="sortProductsBy('available')">
+                                                Disponible <i id="sort-product-available" class="fas fa-sort"></i>
+                                            </th>
+                                            <th style="cursor: pointer;" onclick="sortProductsBy('time')">
+                                                Tiempo Prep. <i id="sort-product-time" class="fas fa-sort"></i>
+                                            </th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tabla-productos">
+                                        <tr>
+                                            <td colspan="7" class="text-center">Cargando productos...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SECCIÓN: Reportes -->
+    <div id="section-reportes" class="admin-section" style="display: none;">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-bar"></i> Reportes y Estadísticas</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-info">🚧 Función en desarrollo - Reportes de ventas, usuarios y actividad</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- SECCIÓN: Sistema -->
+    <div id="section-sistema" class="admin-section" style="display: none;">
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <h5><i class="fas fa-exclamation-triangle"></i> Configuración del Sistema</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Acciones Críticas</h6>
+                        <button class="btn btn-warning mb-2 w-100" onclick="cerrarTodasSesiones()">
+                            <i class="fas fa-sign-out-alt"></i> Cerrar Todas las Sesiones
+                        </button>
+                        <button class="btn btn-danger w-100" onclick="reiniciarSistema()">
+                            <i class="fas fa-sync"></i> Reiniciar Sistema
+                        </button>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Estado del Servidor</h6>
+                        <div id="estado-servidor">
+                            <p class="text-success">✅ Base de datos: Conectada</p>
+                            <p class="text-success">✅ Servicios: Operativos</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Variables globales
+let refreshInterval;
+let currentSection = 'dashboard';
+
+// Inicialización
+document.addEventListener('DOMContentLoaded', function() {
+    showSection('dashboard');
+    startAutoRefresh();
+});
+
+// Navegación entre secciones
+function showSection(section) {
+    // Ocultar todas las secciones
+    document.querySelectorAll('.admin-section').forEach(s => s.style.display = 'none');
+    
+    // Mostrar sección seleccionada
+    document.getElementById('section-' + section).style.display = 'block';
+    
+    // Actualizar botones
+    document.querySelectorAll('.row .btn').forEach(btn => {
+        btn.className = btn.className.replace('btn-primary', 'btn-outline-primary');
+    });
+    
+    // Activar botón actual (solo si hay evento)
+    if (typeof event !== 'undefined' && event.target) {
+        event.target.className = event.target.className.replace('btn-outline-primary', 'btn-primary');
+    } else {
+        // Si no hay evento, buscar el botón correspondiente
+        const buttons = document.querySelectorAll('.row .btn');
+        buttons.forEach(btn => {
+            if (btn.onclick && btn.onclick.toString().includes(`'${section}'`)) {
+                btn.className = btn.className.replace('btn-outline-primary', 'btn-primary');
+            }
+        });
+    }
+    
+    currentSection = section;
+    
+    // Cargar datos de la sección
+    loadSectionData(section);
+}
+
+// Cargar datos según la sección
+function loadSectionData(section) {
+    switch(section) {
+        case 'dashboard':
+            loadDashboardStats();
+            break;
+        case 'usuarios':
+            loadUsuarios();
+            break;
+        case 'sesiones':
+            loadSesiones();
+            break;
+    }
+}
+
+// Cargar estadísticas del dashboard
+function loadDashboardStats() {
+    fetch('/admin/api/dashboard-stats')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('mesas-ocupadas').textContent = data.mesas_ocupadas || 0;
+                document.getElementById('sesiones-activas').textContent = data.sesiones_activas || 0;
+                document.getElementById('pedidos-pendientes').textContent = data.pedidos_pendientes || 0;
+                document.getElementById('ventas-hoy').textContent = '$' + (data.ventas_hoy || 0).toFixed(2);
+            } else {
+                console.error('Error en API:', data.message);
+                // Mostrar valores por defecto si hay error
+                document.getElementById('mesas-ocupadas').textContent = '0';
+                document.getElementById('sesiones-activas').textContent = '0';
+                document.getElementById('pedidos-pendientes').textContent = '0';
+                document.getElementById('ventas-hoy').textContent = '$0.00';
+            }
+        })
+        .catch(error => {
+            console.error('Error cargando stats:', error);
+            // Mostrar valores por defecto si hay error de red
+            document.getElementById('mesas-ocupadas').textContent = 'Error';
+            document.getElementById('sesiones-activas').textContent = 'Error';
+            document.getElementById('pedidos-pendientes').textContent = 'Error';
+            document.getElementById('ventas-hoy').textContent = 'Error';
+        });
+    
+    // Cargar actividad reciente
+    loadActividad();
+}
+
+// Cargar actividad reciente
+function loadActividad() {
+    fetch('/admin/api/actividad-reciente')
+        .then(response => response.json())
+        .then(data => {
+            const container = document.getElementById('actividad-tiempo-real');
+            if (data && data.length > 0) {
+                container.innerHTML = data.map(item => `
+                    <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                        <div>
+                            <strong>${item.usuario}</strong> - ${item.accion}
+                            <br><small class="text-muted">${item.timestamp}</small>
+                        </div>
+                        <span class="badge bg-${item.tipo}">${item.rol}</span>
+                    </div>
+                `).join('');
+            } else {
+                container.innerHTML = '<p class="text-muted">No hay actividad reciente</p>';
+            }
+        })
+        .catch(error => console.error('Error cargando actividad:', error));
+}
+
+// Cargar lista de usuarios
+function loadUsuarios() {
+    fetch('/admin/api/usuarios')
+        .then(response => response.json())
+        .then(data => {
+            // Guardar datos para ordenamiento
+            usersData = data.map(user => ({
+                ...user,
+                is_online: user.is_active // Mapear para consistencia
+            }));
+            
+            // Si hay un ordenamiento activo, aplicarlo
+            if (currentSortColumn) {
+                sortUsersData();
+            }
+            
+            // Renderizar tabla
+            renderUsersTable();
+        })
+        .catch(error => console.error('Error cargando usuarios:', error));
+}
+
+// Cargar sesiones activas
+function loadSesiones() {
+    console.log('[SESIONES] Iniciando carga de sesiones activas...');
+    fetch('/admin/api/sesiones-activas')
+        .then(response => {
+            console.log('[SESIONES] Respuesta recibida:', response.status);
+            return response.json();
+        })
+        .then(data => {
+            console.log('[SESIONES] Datos recibidos:', data);
+            const tbody = document.getElementById('tabla-sesiones');
+            if (!tbody) {
+                console.error('[SESIONES] Elemento tabla-sesiones no encontrado');
+                return;
+            }
+            
+            if (Array.isArray(data)) {
+                console.log(`[SESIONES] Renderizando ${data.length} sesiones`);
+                tbody.innerHTML = data.map(session => `
+                    <tr>
+                        <td><strong>${session.username}</strong></td>
+                        <td><span class="badge bg-${getRoleBadge(session.role)}">${session.role}</span></td>
+                        <td><code>${session.ip_address || 'N/A'}</code></td>
+                        <td>${formatTime(session.created_at)}</td>
+                        <td>${formatTime(session.last_activity)}</td>
+                        <td>
+                            <button class="btn btn-sm btn-danger" onclick="forceLogout(${session.user_id})">
+                                <i class="fas fa-sign-out-alt"></i> Cerrar
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+            } else {
+                console.error('[SESIONES] Datos no son un array:', data);
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Error cargando sesiones</td></tr>';
+            }
+        })
+        .catch(error => {
+            console.error('[SESIONES] Error cargando sesiones:', error);
+            const tbody = document.getElementById('tabla-sesiones');
+            if (tbody) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Error de conexión</td></tr>';
+            }
+        });
+}
+
+// Crear nuevo usuario
+document.getElementById('form-nuevo-usuario').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    
+    fetch('/admin/api/crear-usuario', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Usuario creado exitosamente');
+            this.reset();
+            loadUsuarios();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error creando usuario');
+    });
+});
+
+// Eliminar usuario
+function deleteUser(userId) {
+    if (confirm('¿Estás seguro de que deseas eliminar este usuario?')) {
+        fetch(`/admin/api/eliminar-usuario/${userId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Usuario eliminado exitosamente');
+                loadUsuarios();
+                loadDashboardStats();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error eliminando usuario');
+        });
+    }
+}
+
+// Logout forzado
+function forceLogout(userId) {
+    if (confirm('¿Cerrar la sesión de este usuario?')) {
+        fetch('/admin/api/force-logout', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ user_id: userId })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Sesión cerrada exitosamente');
+                loadSesiones();
+                loadDashboardStats();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error cerrando sesión');
+        });
+    }
+}
+
+// Funciones auxiliares
+function getRoleBadge(role) {
+    const badges = {
+        'admin': 'danger',
+        'mozo': 'primary', 
+        'cocina': 'warning',
+        'cajero': 'success'
+    };
+    return badges[role] || 'secondary';
+}
+
+function formatTime(timestamp) {
+    if (!timestamp) return 'N/A';
+    return new Date(timestamp).toLocaleString('es-ES');
+}
+
+// Auto-refresh
+function startAutoRefresh() {
+    refreshInterval = setInterval(() => {
+        console.log(`[AUTO-REFRESH] Sección actual: ${currentSection}`);
+        if (currentSection === 'dashboard') {
+            console.log('[AUTO-REFRESH] Cargando dashboard...');
+            loadDashboardStats();
+        } else if (currentSection === 'sesiones') {
+            console.log('[AUTO-REFRESH] Cargando sesiones...');
+            loadSesiones();
+        } else if (currentSection === 'usuarios') {
+            console.log('[AUTO-REFRESH] Cargando usuarios...');
+            loadUsuarios();
+        }
+    }, 5000);
+    console.log('[AUTO-REFRESH] Auto-refresh iniciado cada 5 segundos');
+}
+
+// Toggle contraseña visible/oculta
+document.addEventListener('DOMContentLoaded', function() {
+    const togglePassword = document.getElementById('toggle-password');
+    const passwordInput = document.getElementById('password-input');
+    const eyeIcon = document.getElementById('eye-icon');
+    
+    if (togglePassword) {
+        togglePassword.addEventListener('click', function() {
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            
+            // Cambiar el ícono del ojo
+            if (type === 'text') {
+                eyeIcon.classList.remove('fa-eye');
+                eyeIcon.classList.add('fa-eye-slash');
+            } else {
+                eyeIcon.classList.remove('fa-eye-slash');
+                eyeIcon.classList.add('fa-eye');
+            }
+        });
+    }
+});
+
+// Variables para ordenamiento
+let currentSortColumn = '';
+let currentSortDirection = 'asc';
+let usersData = [];
+
+// Función para ordenar tabla
+function sortTable(column) {
+    // Cambiar dirección si es la misma columna
+    if (currentSortColumn === column) {
+        currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+        currentSortColumn = column;
+        currentSortDirection = 'asc';
+    }
+    
+    // Actualizar iconos
+    updateSortIcons();
+    
+    // Ordenar datos
+    sortUsersData();
+    
+    // Renderizar tabla
+    renderUsersTable();
+}
+
+function updateSortIcons() {
+    // Resetear todos los iconos
+    ['username', 'role', 'status', 'last_login'].forEach(col => {
+        const icon = document.getElementById(`sort-${col}`);
+        if (icon) {
+            icon.className = 'fas fa-sort';
+        }
+    });
+    
+    // Establecer icono de la columna actual
+    const currentIcon = document.getElementById(`sort-${currentSortColumn}`);
+    if (currentIcon) {
+        currentIcon.className = currentSortDirection === 'asc' ? 'fas fa-sort-up' : 'fas fa-sort-down';
+    }
+}
+
+function sortUsersData() {
+    usersData.sort((a, b) => {
+        let valueA, valueB;
+        
+        switch (currentSortColumn) {
+            case 'username':
+                valueA = a.username.toLowerCase();
+                valueB = b.username.toLowerCase();
+                break;
+            case 'role':
+                valueA = a.role.toLowerCase();
+                valueB = b.role.toLowerCase();
+                break;
+            case 'status':
+                valueA = a.is_online ? 'online' : 'offline';
+                valueB = b.is_online ? 'online' : 'offline';
+                break;
+            case 'last_login':
+                valueA = a.last_login || '1970-01-01';
+                valueB = b.last_login || '1970-01-01';
+                break;
+            default:
+                return 0;
+        }
+        
+        if (valueA < valueB) {
+            return currentSortDirection === 'asc' ? -1 : 1;
+        }
+        if (valueA > valueB) {
+            return currentSortDirection === 'asc' ? 1 : -1;
+        }
+        return 0;
+    });
+}
+
+function renderUsersTable() {
+    const tbody = document.getElementById('tabla-usuarios');
+    if (!tbody || !usersData) return;
+    
+    tbody.innerHTML = usersData.map(user => `
+        <tr>
+            <td>${user.username}</td>
+            <td><span class="badge bg-${getRoleBadge(user.role)}">${user.role}</span></td>
+            <td><span class="badge bg-${user.is_online ? 'success' : 'secondary'}">${user.is_online ? 'En línea' : 'Desconectado'}</span></td>
+            <td>${user.last_login || 'Nunca'}</td>
+            <td>
+                <button class="btn btn-sm btn-warning me-1" onclick="editUser(${user.id})" title="Editar usuario">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-sm btn-danger" onclick="deleteUser(${user.id})" title="Eliminar usuario">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// Mostrar/ocultar campo de estación según el rol
+function toggleEstacionField() {
+    const roleSelect = document.getElementById('role-select');
+    const estacionField = document.getElementById('estacion-field');
+    
+    if (roleSelect.value === 'cocina') {
+        estacionField.style.display = 'block';
+        estacionField.querySelector('select').required = true;
+    } else {
+        estacionField.style.display = 'none';
+        estacionField.querySelector('select').required = false;
+        estacionField.querySelector('select').value = '';
+    }
+}
+
+// Mostrar/ocultar campo de estación en modal de edición
+function toggleEstacionFieldEdit() {
+    const roleSelect = document.getElementById('usuario-role');
+    const estacionField = document.getElementById('estacion-field-edit');
+    
+    if (roleSelect.value === 'cocina') {
+        estacionField.style.display = 'block';
+        estacionField.querySelector('select').required = true;
+    } else {
+        estacionField.style.display = 'none';
+        estacionField.querySelector('select').required = false;
+        estacionField.querySelector('select').value = '';
+    }
+}
+
+// Editar usuario
+function editUser(userId) {
+    const user = usersData.find(u => u.id === userId);
+    if (!user) return;
+    
+    const modal = new bootstrap.Modal(document.getElementById('modalUsuario'));
+    
+    // Llenar el formulario
+    document.getElementById('usuario-id').value = user.id;
+    document.getElementById('usuario-username').value = user.username;
+    document.getElementById('usuario-role').value = user.role;
+    
+    // Manejar estación si es cocina
+    toggleEstacionFieldEdit();
+    if (user.role === 'cocina' && user.estacion) {
+        document.getElementById('usuario-estacion').value = user.estacion;
+    }
+    
+    modal.show();
+}
+
+// Mostrar/ocultar campo de nivel de picante según etiqueta
+function toggleSpiceLevelField() {
+    const tagsSelect = document.getElementById('producto-tags');
+    const spiceLevelField = document.getElementById('spice-level-field');
+    
+    if (tagsSelect.value === '🌶️ Picante') {
+        spiceLevelField.style.display = 'block';
+        document.getElementById('producto-spice-level').required = true;
+    } else {
+        spiceLevelField.style.display = 'none';
+        document.getElementById('producto-spice-level').required = false;
+    }
+}
+
+// Mostrar input para etiqueta personalizada
+function showCustomTagInput() {
+    const customInput = document.getElementById('custom-tag-input');
+    const tagsSelect = document.getElementById('producto-tags');
+    
+    customInput.style.display = 'block';
+    customInput.focus();
+    tagsSelect.style.display = 'none';
+}
+
+// Guardar etiqueta personalizada
+function saveCustomTag() {
+    const customInput = document.getElementById('custom-tag-input');
+    const tagsSelect = document.getElementById('producto-tags');
+    const customValue = customInput.value.trim();
+    
+    if (customValue) {
+        // Agregar la nueva opción al select
+        const newOption = document.createElement('option');
+        newOption.value = customValue;
+        newOption.textContent = customValue;
+        newOption.selected = true;
+        
+        // Insertar antes de la opción "Crear nueva etiqueta"
+        const customOption = tagsSelect.querySelector('option[value="custom"]');
+        tagsSelect.insertBefore(newOption, customOption);
+    }
+    
+    // Ocultar input y mostrar select
+    customInput.style.display = 'none';
+    customInput.value = '';
+    tagsSelect.style.display = 'block';
+    
+    // Verificar si necesita mostrar campo de picante
+    toggleSpiceLevelField();
+}
+
+// Cancelar creación de etiqueta
+function cancelCustomTag() {
+    setTimeout(() => {
+        const customInput = document.getElementById('custom-tag-input');
+        const tagsSelect = document.getElementById('producto-tags');
+        
+        customInput.style.display = 'none';
+        customInput.value = '';
+        tagsSelect.style.display = 'block';
+    }, 100);
+}
+
+// Editar etiqueta actual
+function editCurrentTag() {
+    const tagsSelect = document.getElementById('producto-tags');
+    const editInput = document.getElementById('edit-tag-input');
+    const currentValue = tagsSelect.value;
+    
+    if (!currentValue || currentValue === '' || currentValue === 'custom') {
+        alert('Selecciona una etiqueta para editar');
+        return;
+    }
+    
+    // Mostrar input con valor actual
+    editInput.style.display = 'block';
+    editInput.value = currentValue;
+    editInput.focus();
+    editInput.select();
+    tagsSelect.style.display = 'none';
+}
+
+// Guardar etiqueta editada
+function saveEditedTag() {
+    const editInput = document.getElementById('edit-tag-input');
+    const tagsSelect = document.getElementById('producto-tags');
+    const newValue = editInput.value.trim();
+    const oldValue = tagsSelect.value;
+    
+    if (newValue && newValue !== oldValue) {
+        // Encontrar y actualizar la opción
+        const selectedOption = tagsSelect.querySelector(`option[value="${oldValue}"]`);
+        if (selectedOption) {
+            selectedOption.value = newValue;
+            selectedOption.textContent = newValue;
+        }
+    }
+    
+    // Ocultar input y mostrar select
+    editInput.style.display = 'none';
+    editInput.value = '';
+    tagsSelect.style.display = 'block';
+    
+    // Verificar si necesita mostrar campo de picante
+    toggleSpiceLevelField();
+}
+
+// Cancelar edición de etiqueta
+function cancelEditTag() {
+    setTimeout(() => {
+        const editInput = document.getElementById('edit-tag-input');
+        const tagsSelect = document.getElementById('producto-tags');
+        
+        editInput.style.display = 'none';
+        editInput.value = '';
+        tagsSelect.style.display = 'block';
+    }, 100);
+}
+
+// Guardar cambios de usuario
+async function guardarUsuario() {
+    const form = document.getElementById('formUsuario');
+    const formData = new FormData(form);
+    const userId = document.getElementById('usuario-id').value;
+    
+    try {
+        const response = await fetch(`/admin/api/usuarios/${userId}`, {
+            method: 'PUT',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            bootstrap.Modal.getInstance(document.getElementById('modalUsuario')).hide();
+            showAlert('success', result.message);
+            loadUsers(); // Recargar la lista de usuarios
+        } else {
+            showAlert('danger', result.message);
+        }
+    } catch (error) {
+        showAlert('danger', 'Error al actualizar usuario');
+        console.error('Error:', error);
+    }
+}
+
+// Limpiar interval al salir
+window.addEventListener('beforeunload', function() {
+    if (refreshInterval) {
+        clearInterval(refreshInterval);
+    }
+});
+
+// ===============================
+// FUNCIONES CRUD DE MENÚ
+// ===============================
+
+let categoriasData = [];
+let productosData = [];
+let currentProductSortColumn = 'id';
+let currentProductSortDirection = 'asc';
+
+// Función para cargar categorías
+async function cargarCategorias() {
+    try {
+        const response = await fetch('/admin/api/categorias');
+        if (response.ok) {
+            categoriasData = await response.json();
+            renderTablaCategrias();
+        }
+    } catch (error) {
+        console.error('Error cargando categorías:', error);
+    }
+}
+
+// Función para cargar productos
+async function cargarProductos() {
+    try {
+        const response = await fetch('/admin/api/productos');
+        if (response.ok) {
+            productosData = await response.json();
+            renderTablaProductos();
+        }
+    } catch (error) {
+        console.error('Error cargando productos:', error);
+    }
+}
+
+// Renderizar tabla de categorías
+function renderTablaCategrias() {
+    const tbody = document.getElementById('tabla-categorias');
+    if (!tbody || !categoriasData) return;
+    
+    tbody.innerHTML = categoriasData.map(categoria => `
+        <tr>
+            <td>${categoria.id}</td>
+            <td>${categoria.name}</td>
+            <td>${categoria.description || ''}</td>
+            <td>${categoria.estacion || '-'}</td>
+            <td><span class="badge bg-info">${categoria.products_count || 0}</span></td>
+            <td>
+                <button class="btn btn-sm btn-warning me-1" onclick="editarCategoria(${categoria.id})" title="Editar">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-sm btn-danger" onclick="eliminarCategoria(${categoria.id})" title="Eliminar">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// Renderizar tabla de productos
+function renderTablaProductos() {
+    const tbody = document.getElementById('tabla-productos');
+    if (!tbody || !productosData) return;
+    
+    // Ordenar datos antes de renderizar
+    sortProductsData();
+    updateProductSortIcons();
+    
+    tbody.innerHTML = productosData.map(producto => `
+        <tr>
+            <td>${producto.id}</td>
+            <td>${producto.name}</td>
+            <td>${producto.category_name}</td>
+            <td>S/. ${producto.price.toFixed(2)}</td>
+            <td><span class="badge bg-${producto.is_available ? 'success' : 'secondary'}">${producto.is_available ? 'Sí' : 'No'}</span></td>
+            <td>${producto.preparation_time} min</td>
+            <td>
+                <button class="btn btn-sm btn-warning me-1" onclick="editarProducto(${producto.id})" title="Editar">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-sm btn-danger" onclick="eliminarProducto(${producto.id})" title="Eliminar">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// Función para ordenar productos
+function sortProductsBy(column) {
+    if (currentProductSortColumn === column) {
+        // Cambiar dirección si es la misma columna
+        currentProductSortDirection = currentProductSortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+        // Nueva columna, empezar con ascendente
+        currentProductSortColumn = column;
+        currentProductSortDirection = 'asc';
+    }
+    renderTablaProductos();
+}
+
+// Actualizar iconos de ordenamiento de productos
+function updateProductSortIcons() {
+    // Resetear todos los iconos
+    ['id', 'name', 'category', 'price', 'available', 'time'].forEach(col => {
+        const icon = document.getElementById(`sort-product-${col}`);
+        if (icon) {
+            icon.className = 'fas fa-sort';
+        }
+    });
+    
+    // Establecer icono de la columna actual
+    const currentIcon = document.getElementById(`sort-product-${currentProductSortColumn}`);
+    if (currentIcon) {
+        currentIcon.className = currentProductSortDirection === 'asc' ? 'fas fa-sort-up' : 'fas fa-sort-down';
+    }
+}
+
+// Ordenar datos de productos
+function sortProductsData() {
+    productosData.sort((a, b) => {
+        let valueA, valueB;
+        
+        switch (currentProductSortColumn) {
+            case 'id':
+                valueA = a.id;
+                valueB = b.id;
+                break;
+            case 'name':
+                valueA = a.name.toLowerCase();
+                valueB = b.name.toLowerCase();
+                break;
+            case 'category':
+                valueA = a.category_name.toLowerCase();
+                valueB = b.category_name.toLowerCase();
+                break;
+            case 'price':
+                valueA = parseFloat(a.price);
+                valueB = parseFloat(b.price);
+                break;
+            case 'available':
+                valueA = a.is_available ? 1 : 0;
+                valueB = b.is_available ? 1 : 0;
+                break;
+            case 'time':
+                valueA = a.preparation_time;
+                valueB = b.preparation_time;
+                break;
+            default:
+                return 0;
+        }
+        
+        if (typeof valueA === 'string') {
+            if (valueA < valueB) {
+                return currentProductSortDirection === 'asc' ? -1 : 1;
+            }
+            if (valueA > valueB) {
+                return currentProductSortDirection === 'asc' ? 1 : -1;
+            }
+        } else {
+            if (currentProductSortDirection === 'asc') {
+                return valueA - valueB;
+            } else {
+                return valueB - valueA;
+            }
+        }
+        return 0;
+    });
+}
+
+// Funciones de modal de categoría
+function abrirModalCategoria(categoriaId = null) {
+    const modal = new bootstrap.Modal(document.getElementById('modalCategoria'));
+    const form = document.getElementById('formCategoria');
+    const title = document.getElementById('modalCategoriaTitle');
+    
+    form.reset();
+    
+    if (categoriaId) {
+        const categoria = categoriasData.find(c => c.id === categoriaId);
+        if (categoria) {
+            title.textContent = 'Editar Categoría';
+            document.getElementById('categoria-id').value = categoria.id;
+            document.getElementById('categoria-name').value = categoria.name;
+            document.getElementById('categoria-description').value = categoria.description || '';
+            document.getElementById('categoria-estacion').value = categoria.estacion || '';
+        }
+    } else {
+        title.textContent = 'Nueva Categoría';
+        document.getElementById('categoria-id').value = '';
+    }
+    
+    modal.show();
+}
+
+function editarCategoria(categoriaId) {
+    abrirModalCategoria(categoriaId);
+}
+
+async function guardarCategoria() {
+    const form = document.getElementById('formCategoria');
+    const formData = new FormData(form);
+    const categoriaId = document.getElementById('categoria-id').value;
+    
+    try {
+        const url = categoriaId ? `/admin/api/categorias/${categoriaId}` : '/admin/api/categorias';
+        const method = categoriaId ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+            method: method,
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            bootstrap.Modal.getInstance(document.getElementById('modalCategoria')).hide();
+            showAlert('success', result.message);
+            cargarCategorias();
+        } else {
+            showAlert('danger', result.message);
+        }
+    } catch (error) {
+        showAlert('danger', 'Error al guardar categoría');
+        console.error('Error:', error);
+    }
+}
+
+async function eliminarCategoria(categoriaId) {
+    if (!confirm('¿Estás seguro de que quieres eliminar esta categoría?')) return;
+    
+    try {
+        const response = await fetch(`/admin/api/categorias/${categoriaId}`, {
+            method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showAlert('success', result.message);
+            cargarCategorias();
+        } else {
+            showAlert('danger', result.message);
+        }
+    } catch (error) {
+        showAlert('danger', 'Error al eliminar categoría');
+        console.error('Error:', error);
+    }
+}
+
+// Funciones de modal de producto
+function abrirModalProducto(productoId = null) {
+    const modal = new bootstrap.Modal(document.getElementById('modalProducto'));
+    const form = document.getElementById('formProducto');
+    const title = document.getElementById('modalProductoTitle');
+    
+    form.reset();
+    cargarCategoriasSelect();
+    
+    // Resetear campos condicionales
+    document.getElementById('spice-level-field').style.display = 'none';
+    document.getElementById('custom-tag-input').style.display = 'none';
+    document.getElementById('producto-tags').style.display = 'block';
+    
+    if (productoId) {
+        const producto = productosData.find(p => p.id === productoId);
+        if (producto) {
+            title.textContent = 'Editar Producto';
+            document.getElementById('producto-id').value = producto.id;
+            document.getElementById('producto-name').value = producto.name;
+            document.getElementById('producto-description').value = producto.description || '';
+            document.getElementById('producto-ingredients').value = producto.ingredients || '';
+            document.getElementById('producto-price').value = producto.price;
+            document.getElementById('producto-tags').value = producto.tags || '';
+            document.getElementById('producto-category').value = producto.category_id;
+            document.getElementById('producto-preparation-time').value = producto.preparation_time || 15;
+            document.getElementById('producto-spice-level').value = producto.spice_level || 'mild';
+            document.getElementById('producto-available').checked = producto.is_available;
+            
+            // Mostrar campo de picante si corresponde
+            toggleSpiceLevelField();
+        }
+    } else {
+        title.textContent = 'Nuevo Producto';
+        document.getElementById('producto-id').value = '';
+        document.getElementById('producto-available').checked = true;
+    }
+    
+    modal.show();
+}
+
+function editarProducto(productoId) {
+    abrirModalProducto(productoId);
+}
+
+async function cargarCategoriasSelect() {
+    const select = document.getElementById('producto-category');
+    if (!categoriasData.length) {
+        await cargarCategorias();
+    }
+    
+    select.innerHTML = '<option value="">Seleccionar categoría...</option>' +
+        categoriasData.map(categoria => 
+            `<option value="${categoria.id}">${categoria.name}</option>`
+        ).join('');
+}
+
+async function guardarProducto() {
+    const form = document.getElementById('formProducto');
+    const formData = new FormData(form);
+    const productoId = document.getElementById('producto-id').value;
+    
+    // Agregar el valor del checkbox de disponibilidad
+    formData.set('is_available', document.getElementById('producto-available').checked);
+    
+    try {
+        const url = productoId ? `/admin/api/productos/${productoId}` : '/admin/api/productos';
+        const method = productoId ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+            method: method,
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            bootstrap.Modal.getInstance(document.getElementById('modalProducto')).hide();
+            showAlert('success', result.message);
+            cargarProductos();
+        } else {
+            showAlert('danger', result.message);
+        }
+    } catch (error) {
+        showAlert('danger', 'Error al guardar producto');
+        console.error('Error:', error);
+    }
+}
+
+async function eliminarProducto(productoId) {
+    if (!confirm('¿Estás seguro de que quieres eliminar este producto?')) return;
+    
+    try {
+        const response = await fetch(`/admin/api/productos/${productoId}`, {
+            method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showAlert('success', result.message);
+            cargarProductos();
+        } else {
+            showAlert('danger', result.message);
+        }
+    } catch (error) {
+        showAlert('danger', 'Error al eliminar producto');
+        console.error('Error:', error);
+    }
+}
+
+// Cargar datos cuando se active la sección de menú
+document.addEventListener('DOMContentLoaded', function() {
+    // Escuchar cuando se cambie a la sección de menú
+    const originalShowSection = window.showSection;
+    window.showSection = function(sectionId) {
+        originalShowSection(sectionId);
+        
+        if (sectionId === 'menu') {
+            cargarCategorias();
+            cargarProductos();
+        }
+    };
+});
+
+</script>
+
+<!-- MODALES PARA CRUD DE MENÚ -->
+
+<!-- Modal Categoría -->
+<div class="modal fade" id="modalCategoria" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalCategoriaTitle">Nueva Categoría</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formCategoria" onsubmit="event.preventDefault(); guardarCategoria();">
+                <div class="modal-body">
+                    <input type="hidden" id="categoria-id" name="id">
+                    
+                    <div class="mb-3">
+                        <label for="categoria-name" class="form-label">Nombre *</label>
+                        <input type="text" class="form-control" id="categoria-name" name="name" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="categoria-description" class="form-label">Descripción</label>
+                        <textarea class="form-control" id="categoria-description" name="description" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="categoria-estacion" class="form-label">Estación</label>
+                        <select class="form-control" id="categoria-estacion" name="estacion">
+                            <option value="">Sin estación específica</option>
+                            <option value="fria">Estación Fría</option>
+                            <option value="caliente">Estación Caliente</option>
+                            <option value="bebidas">Bebidas</option>
+                            <option value="postres">Postres</option>
+                            <option value="frituras">Frituras</option>
+                            <option value="acompañamiento">Acompañamiento</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Producto -->
+<div class="modal fade" id="modalProducto" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalProductoTitle">Nuevo Producto</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formProducto" onsubmit="event.preventDefault(); guardarProducto();">
+                <div class="modal-body">
+                    <input type="hidden" id="producto-id" name="id">
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="producto-name" class="form-label">Nombre *</label>
+                                <input type="text" class="form-control" id="producto-name" name="name" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="producto-price" class="form-label">Precio (S/.) *</label>
+                                <input type="number" step="0.01" class="form-control" id="producto-price" name="price" required>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="producto-description" class="form-label">Descripción</label>
+                        <textarea class="form-control" id="producto-description" name="description" rows="2"></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="producto-ingredients" class="form-label">Ingredientes</label>
+                        <textarea class="form-control" id="producto-ingredients" name="ingredients" rows="2" placeholder="Pescado, cebolla, limón, ají..."></textarea>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="producto-category" class="form-label">Categoría *</label>
+                                <select class="form-control" id="producto-category" name="category_id" required>
+                                    <option value="">Seleccionar categoría...</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="producto-tags" class="form-label">Etiquetas</label>
+                                <div class="input-group">
+                                    <select class="form-control" id="producto-tags" name="tags" onchange="toggleSpiceLevelField()">
+                                        <option value="">Sin etiqueta especial</option>
+                                        <option value="⭐ Especialidad de la casa">⭐ Especialidad de la casa</option>
+                                        <option value="🌶️ Picante">🌶️ Picante</option>
+                                        <option value="🏆 Recomendado">🏆 Recomendado</option>
+                                        <option value="🆕 Nuevo">🆕 Nuevo</option>
+                                        <option value="custom">+ Crear nueva etiqueta</option>
+                                    </select>
+                                    <button type="button" class="btn btn-outline-primary" onclick="showCustomTagInput()" title="Crear etiqueta personalizada">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-warning" onclick="editCurrentTag()" title="Editar etiqueta actual">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                </div>
+                                <input type="text" class="form-control mt-2" id="custom-tag-input" placeholder="Escribir nueva etiqueta..." style="display: none;" onkeypress="if(event.key==='Enter') saveCustomTag()" onblur="cancelCustomTag()">
+                                <input type="text" class="form-control mt-2" id="edit-tag-input" placeholder="Editar etiqueta..." style="display: none;" onkeypress="if(event.key==='Enter') saveEditedTag()" onblur="cancelEditTag()">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="producto-preparation-time" class="form-label">Tiempo Prep. (min)</label>
+                                <input type="number" class="form-control" id="producto-preparation-time" name="preparation_time" value="15" min="1">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3" id="spice-level-field" style="display: none;">
+                                <label for="producto-spice-level" class="form-label">Nivel de Picante</label>
+                                <select class="form-control" id="producto-spice-level" name="spice_level">
+                                    <option value="mild">Suave</option>
+                                    <option value="medium">Medio</option>
+                                    <option value="hot">Picante</option>
+                                    <option value="very_hot">Muy Picante</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="producto-available" name="is_available" checked>
+                        <label class="form-check-label" for="producto-available">
+                            Producto disponible
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Usuario -->
+<div class="modal fade" id="modalUsuario" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalUsuarioTitle">Editar Usuario</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formUsuario" onsubmit="event.preventDefault(); guardarUsuario();">
+                <div class="modal-body">
+                    <input type="hidden" id="usuario-id" name="id">
+                    
+                    <div class="mb-3">
+                        <label for="usuario-username" class="form-label">Usuario *</label>
+                        <input type="text" class="form-control" id="usuario-username" name="username" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="usuario-role" class="form-label">Rol *</label>
+                        <select class="form-control" id="usuario-role" name="role" required onchange="toggleEstacionFieldEdit()">
+                            <option value="">Seleccionar rol...</option>
+                            <option value="admin">Administrador</option>
+                            <option value="mozo">Mozo</option>
+                            <option value="cocina">Cocina</option>
+                            <option value="cajero">Cajero</option>
+                        </select>
+                    </div>
+                    
+                    <div id="estacion-field-edit" class="mb-3" style="display: none;">
+                        <label for="usuario-estacion" class="form-label">Estación de Cocina *</label>
+                        <select class="form-control" id="usuario-estacion" name="estacion">
+                            <option value="">Seleccionar estación...</option>
+                            <option value="fria">Estación Fría</option>
+                            <option value="caliente">Estación Caliente</option>
+                            <option value="bebidas">Bebidas</option>
+                            <option value="postres">Postres</option>
+                            <option value="frituras">Frituras</option>
+                            <option value="acompañamiento">Acompañamiento</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

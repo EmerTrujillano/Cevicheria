@@ -20,13 +20,9 @@ class AuthService:
             
             print(f"[AUTH_SERVICE] Usuario {username} no existe, creando nuevo usuario")
             
-            # Crear usuario
-            hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
-            print(f"[AUTH_SERVICE] Password hasheado correctamente")
-            
+            # Crear usuario usando el método del modelo User
             user = User(
                 username=username, 
-                password=hashed_password, 
                 role=role,
                 first_name=first_name,
                 last_name=last_name,
@@ -34,6 +30,11 @@ class AuthService:
                 last_login=None,
                 session_expires_at=None
             )
+            
+            # Usar el método set_password del modelo User (werkzeug.security)
+            user.set_password(password)
+            print(f"[AUTH_SERVICE] Password hasheado correctamente")
+            
             print(f"[AUTH_SERVICE] Objeto User creado: {user}")
             
             print(f"[AUTH_SERVICE] Agregando usuario a la sesión de BD")
@@ -70,11 +71,11 @@ class AuthService:
             if user:
                 print(f"[AUTH_SERVICE] Usuario ID: {user.id}, Rol: {user.role}")
                 
-                # Verificar contraseña usando bcrypt
+                # Verificar contraseña usando el método del modelo User
                 password_valid = False
                 try:
-                    # Usar bcrypt para verificar contraseña
-                    password_valid = bcrypt.check_password_hash(user.password, password)
+                    # Usar el método check_password del modelo User (werkzeug.security)
+                    password_valid = user.check_password(password)
                     print(f"[AUTH_SERVICE] Contraseña válida: {password_valid}")
                 except Exception as e:
                     print(f"[AUTH_SERVICE] Error verificando contraseña: {str(e)}")

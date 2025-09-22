@@ -129,8 +129,7 @@ def profile():
                 'id': user.id,
                 'username': user.username,
                 'role': user.role,
-                'first_name': user.first_name,
-                'last_name': user.last_name
+                'name': user.username  # Usar username como nombre
             }
         })
         

@@ -41,8 +41,24 @@ class User(db.Model):
         self.password = generate_password_hash(password, method='pbkdf2:sha256')
     
     def check_password(self, password):
-        """Verificar contraseña"""
-        return check_password_hash(self.password, password)
+        """Verificar contraseña - soporta tanto bcrypt como werkzeug.security"""
+        try:
+            # Primero intentar con werkzeug.security (pbkdf2)
+            if self.password.startswith('pbkdf2:'):
+                return check_password_hash(self.password, password)
+            
+            # Si no es pbkdf2, intentar con bcrypt
+            elif self.password.startswith('$2b$'):
+                from config.extensions import bcrypt
+                return bcrypt.check_password_hash(self.password, password)
+            
+            # Si no es ninguno de los dos, intentar werkzeug por defecto
+            else:
+                return check_password_hash(self.password, password)
+                
+        except Exception as e:
+            print(f"[USER_MODEL] Error verificando contraseña para {self.username}: {e}")
+            return False
 
     @property
     def is_active(self):

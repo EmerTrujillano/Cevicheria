@@ -9,7 +9,7 @@ menu_bp = Blueprint('menu', __name__, url_prefix='/menu')
 def virtual_menu():
     """Menú virtual para clientes (no requiere autenticación)"""
     table_id = request.args.get('table')
-    return render_template('menu/virtual_menu_simple.html', table_id=table_id)
+    return render_template('menu/virtual_menu.html', table_id=table_id)
 
 @menu_bp.route('/categories')
 def get_categories():

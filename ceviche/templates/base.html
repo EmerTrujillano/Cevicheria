@@ -912,16 +912,66 @@
         let sessionCheckInterval;
         
         function startSessionMonitoring() {
-            // Verificar sesión cada 30 segundos si el usuario está logueado
+            // Verificar sesión cada 3 segundos si el usuario está logueado
             if (authToken && !sessionCheckInterval) {
                 sessionCheckInterval = setInterval(async () => {
                     if (authToken && currentUser) {
-                        await checkAuth();
+                        await checkRemoteSessionStatus();
                     } else {
                         // Si no hay token o usuario, detener monitoreo
                         stopSessionMonitoring();
                     }
-                }, 30000); // 30 segundos
+                }, 3000); // 3 segundos para detección rápida de logout remoto
+            }
+        }
+        
+        async function checkRemoteSessionStatus() {
+            try {
+                const response = await fetch('/api/auth/verify-session', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (response.status === 401) {
+                    // Sesión cerrada remotamente o expirada
+                    const data = await response.json();
+                    if (data.message && data.message.includes('administrador')) {
+                        showAlert('Tu sesión fue cerrada por un administrador. Redirigiendo al login...', 'warning');
+                    } else {
+                        showAlert('Tu sesión ha expirado. Redirigiendo al login...', 'warning');
+                    }
+                    
+                    // Limpiar datos y redirigir
+                    localStorage.removeItem('authToken');
+                    authToken = null;
+                    currentUser = null;
+                    stopSessionMonitoring();
+                    
+                    setTimeout(() => {
+                        window.location.href = '/login';
+                    }, 2000);
+                    return;
+                }
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (!data.sessionActive) {
+                        // Sesión no válida
+                        showAlert('Tu sesión ha sido cerrada. Redirigiendo al login...', 'warning');
+                        localStorage.removeItem('authToken');
+                        authToken = null;
+                        currentUser = null;
+                        stopSessionMonitoring();
+                        
+                        setTimeout(() => {
+                            window.location.href = '/login';
+                        }, 2000);
+                    }
+                }
+            } catch (error) {
+                console.error('Error verificando sesión remota:', error);
+                // No hacer nada en errores de red para evitar desconexiones por problemas temporales
             }
         }
         
@@ -938,6 +988,7 @@
                 checkAuth().then(() => {
                     if (currentUser) {
                         startSessionMonitoring();
+                        console.log('🔍 Monitoreo de sesión remota activado (cada 3 segundos)');
                     }
                 });
             }

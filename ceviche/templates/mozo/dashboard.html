@@ -1,0 +1,1079 @@
+﻿{% extends "base.html" %}
+{% block title %}Dashboard Mozo - Cevichería{% endblock %}
+{% block content %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard Mozo - Cevichería</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .sidebar {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .mesa-card {
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .mesa-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        
+        .mesa-libre {
+            border-left: 5px solid #28a745;
+            background: #f8fff9;
+        }
+        
+        .mesa-ocupada {
+            border-left: 5px solid #dc3545;
+            background: #fff8f8;
+        }
+        
+        .cart-item {
+            border-left: 3px solid #007bff;
+            margin-bottom: 8px;
+            background: #ffffff;
+            border-radius: 5px;
+            padding: 10px;
+            color: #333;
+        }
+        
+        .cart-item small {
+            color: #666;
+        }
+        
+        .floating-cart {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        
+        .filter-section {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stats-card {
+            background: rgba(255,255,255,0.2);
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        
+        .mesa-selected {
+            border: 3px solid #ffc107 !important;
+            box-shadow: 0 0 15px rgba(255, 193, 7, 0.5) !important;
+        }
+        
+        .mesa-controls {
+            margin-top: 10px;
+        }
+        
+        .selected-table-info {
+            background: rgba(255, 193, 7, 0.2);
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 15px;
+            color: white;
+            text-align: center;
+        }
+        
+        .product-card {
+            transition: transform 0.2s;
+            cursor: pointer;
+        }
+        
+        .product-card:hover {
+            transform: scale(1.02);
+        }
+        
+        .zone-filter.active {
+            background: #007bff !important;
+            color: white !important;
+        }
+        
+        .status-filter.active {
+            background: #28a745 !important;
+            color: white !important;
+        }
+        
+        .cart-summary {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- SIDEBAR -->
+            <div class="col-md-3 sidebar p-3">
+                <!-- HEADER -->
+                <h4 class="text-center mb-4">
+                    <i class="fas fa-utensils"></i> Dashboard Mozo
+                </h4>
+                
+                <div class="text-center mb-4">
+                    <strong>Usuario:</strong> <span id="usuario-actual">Cargando...</span>
+                </div>
+
+                <!-- ESTADÍSTICAS -->
+                <div class="stats-card">
+                    <h5 id="contador-libres">0</h5>
+                    <small>Mesas Libres</small>
+                </div>
+                
+                <div class="stats-card">
+                    <h5 id="contador-ocupadas">0</h5>
+                    <small>Mesas Ocupadas</small>
+                </div>
+
+                <!-- FILTROS DE ESTADO -->
+                <div class="filter-section">
+                    <h6><i class="fas fa-filter"></i> Filtrar por Estado</h6>
+                    <div class="btn-group-vertical w-100" role="group">
+                        <button type="button" class="btn btn-sm btn-outline-light status-filter active" data-status="all">
+                            <i class="fas fa-list"></i> Todas las Mesas
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-light status-filter" data-status="libre">
+                            <i class="fas fa-check-circle"></i> Solo Libres
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-light status-filter" data-status="ocupada">
+                            <i class="fas fa-users"></i> Solo Ocupadas
+                        </button>
+                    </div>
+                </div>
+
+                <!-- FILTROS DE ZONA -->
+                <div class="filter-section">
+                    <h6><i class="fas fa-map-marker-alt"></i> Filtrar por Zona</h6>
+                    <div id="zone-filters" class="btn-group-vertical w-100">
+                        <button type="button" class="btn btn-sm btn-outline-light zone-filter active" data-zone="all">
+                            <i class="fas fa-globe"></i> Todas las Zonas
+                        </button>
+                    </div>
+                </div>
+
+                <!-- CARRITO DE COMPRAS -->
+                <div class="filter-section">
+                    <h6><i class="fas fa-shopping-cart"></i> Carrito <span id="cart-count" class="badge bg-warning">0</span></h6>
+                    
+                    <!-- MESA SELECCIONADA -->
+                    <div id="selected-table-info" class="selected-table-info" style="display: none;">
+                        <strong>Mesa seleccionada:</strong><br>
+                        <span id="selected-table-text">Ninguna</span>
+                        <button class="btn btn-sm btn-outline-light ms-2" onclick="clearSelectedTable()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    
+                    <div id="cart-items" class="mb-3" style="max-height: 200px; overflow-y: auto;">
+                        <p class="text-center small text-white-50">
+                            <i class="fas fa-info-circle"></i> 
+                            <strong>Cómo pedir:</strong><br>
+                            • Mesa libre: Botón "Seleccionar"<br>
+                            • Mesa ocupada: Selector abajo
+                        </p>
+                    </div>
+                    <div class="cart-summary">
+                        <div class="d-flex justify-content-between mb-2">
+                            <strong style="color: #333;">Total: S/. <span id="cart-total">0.00</span></strong>
+                        </div>
+                        <div class="mt-2">
+                            <select id="cart-table" class="form-select form-select-sm mb-2">
+                                <option value="">Seleccionar Mesa Ocupada</option>
+                            </select>
+                            <small class="text-white-50 d-block mb-2">
+                                <i class="fas fa-info-circle"></i> Para mesas libres usa "Seleccionar" en Estado de Mesas
+                            </small>
+                            <button id="send-to-kitchen" class="btn btn-success btn-sm w-100 mb-2" disabled>
+                                <i class="fas fa-paper-plane"></i> Enviar a Cocina
+                            </button>
+                            <button id="clear-cart" class="btn btn-outline-secondary btn-sm w-100">
+                                <i class="fas fa-trash"></i> Limpiar Carrito
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CONTENIDO PRINCIPAL -->
+            <div class="col-md-9 p-4">
+                <!-- TABS PRINCIPALES -->
+                <ul class="nav nav-tabs mb-4" id="mainTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="mesas-tab" data-bs-toggle="tab" data-bs-target="#mesas-content" type="button" role="tab">
+                            <i class="fas fa-table"></i> Mesas
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="menu-tab" data-bs-toggle="tab" data-bs-target="#menu-content" type="button" role="tab">
+                            <i class="fas fa-utensils"></i> Menú
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content" id="mainTabContent">
+                    <!-- TAB MESAS -->
+                    <div class="tab-pane fade show active" id="mesas-content" role="tabpanel">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5><i class="fas fa-table"></i> Estado de Mesas</h5>
+                            <button class="btn btn-outline-primary btn-sm" onclick="cargarMesas()">
+                                <i class="fas fa-sync-alt"></i> Actualizar
+                            </button>
+                        </div>
+                        
+                        <div id="mesas-container">
+                            <div class="text-center">
+                                <div class="spinner-border" role="status">
+                                    <span class="visually-hidden">Cargando mesas...</span>
+                                </div>
+                                <p>Cargando mesas...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB MENU -->
+                    <div class="tab-pane fade" id="menu-content" role="tabpanel">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5><i class="fas fa-utensils"></i> Menú de Productos</h5>
+                            <button class="btn btn-outline-success btn-sm" onclick="cargarMenu()">
+                                <i class="fas fa-sync-alt"></i> Actualizar
+                            </button>
+                        </div>
+
+                        <!-- Tabs de categorías -->
+                        <ul class="nav nav-pills mb-3" id="menuTabs" role="tablist">
+                            <!-- Se llenarán dinámicamente -->
+                        </ul>
+                        
+                        <!-- Contenido de categorías -->
+                        <div class="tab-content" id="menuTabContent">
+                            <div class="text-center">
+                                <div class="spinner-border" role="status">
+                                    <span class="visually-hidden">Cargando menú...</span>
+                                </div>
+                                <p>Cargando menú...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // Variables globales
+    let mesasData = [];
+    let menuData = {};
+    let cart = [];
+    let zones = new Set();
+    let selectedTable = null; // Mesa seleccionada para el carrito
+    let currentFilters = {
+        status: 'all',
+        zone: 'all'
+    };
+
+    // 1. CARGAR PERFIL DE USUARIO
+    function cargarPerfil() {
+        console.log('🔄 Cargando perfil...');
+        
+        fetch('/mozo/profile', {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.user) {
+                document.getElementById('usuario-actual').textContent = 
+                    `${data.user.username} (${data.user.role})`;
+            } else {
+                document.getElementById('usuario-actual').textContent = 'Error al cargar usuario';
+                console.error('❌ Error profile:', data);
+            }
+        })
+        .catch(error => {
+            console.error('❌ Error profile:', error);
+            document.getElementById('usuario-actual').textContent = 'Error de conexión';
+        });
+    }
+
+    // 2. CARGAR MESAS
+    function cargarMesas() {
+        console.log('🔄 Cargando mesas...');
+        
+        fetch('/mozo/tables', {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('✅ Datos mesas:', data);
+            mesasData = data;
+            
+            // Extraer zonas únicas
+            zones.clear();
+            data.forEach(mesa => {
+                const zona = mesa.zone_name || mesa.zona || 'Sin zona';
+                zones.add(zona);
+            });
+            
+            actualizarFiltrosZona();
+            aplicarFiltros();
+            actualizarSelectMesas();
+        })
+        .catch(error => {
+            console.error('❌ Error mesas:', error);
+            document.getElementById('mesas-container').innerHTML = 
+                '<div class="alert alert-danger">Error al cargar mesas: ' + error.message + '</div>';
+        });
+    }
+
+    // 3. MOSTRAR MESAS FILTRADAS
+    function aplicarFiltros() {
+        const filteredMesas = mesasData.filter(mesa => {
+            const status = mesa.status || (mesa.ocupada ? 'ocupada' : 'libre');
+            const zona = mesa.zone_name || mesa.zona || 'Sin zona';
+            
+            const statusMatch = currentFilters.status === 'all' || status === currentFilters.status;
+            const zoneMatch = currentFilters.zone === 'all' || zona === currentFilters.zone;
+            
+            return statusMatch && zoneMatch;
+        });
+        
+        mostrarMesas(filteredMesas);
+    }
+
+    function mostrarMesas(mesas) {
+        console.log('🏗️ Mostrando', mesas.length, 'mesas filtradas');
+        
+        const container = document.getElementById('mesas-container');
+        const contadorLibres = document.getElementById('contador-libres');
+        const contadorOcupadas = document.getElementById('contador-ocupadas');
+        
+        let libres = 0;
+        let ocupadas = 0;
+        let html = '<div class="row">';
+        
+        mesas.forEach(mesa => {
+            const numero = mesa.number || mesa.numero || 'N/A';
+            const zona = mesa.zone_name || mesa.zona || 'Sin zona';
+            const piso = mesa.floor_name || mesa.piso || 'Sin piso';
+            const status = mesa.status || (mesa.ocupada ? 'ocupada' : 'libre');
+            
+            // Contar estados
+            if (status === 'libre') {
+                libres++;
+            } else if (status === 'ocupada') {
+                ocupadas++;
+            }
+            
+            // Determinar estilos
+            const mesaClass = status === 'libre' ? 'mesa-libre' : 'mesa-ocupada';
+            const colorClass = status === 'libre' ? 'text-success' : 'text-danger';
+            const icono = status === 'libre' ? 'fa-table' : 'fa-users';
+            const estadoTexto = status === 'libre' ? 'Libre' : 'Ocupada';
+            
+            html += `
+                <div class="col-xl-3 col-lg-4 col-md-6 mb-3">
+                    <div class="card mesa-card ${mesaClass}" data-mesa-id="${mesa.id}" data-mesa-numero="${numero}" data-mesa-status="${status}">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="card-title mb-1">
+                                        <i class="fas ${icono} ${colorClass}"></i>
+                                        Mesa ${numero}
+                                    </h6>
+                                    <p class="card-text small mb-1">
+                                        <i class="fas fa-map-marker-alt"></i> ${zona}
+                                    </p>
+                                    <p class="card-text small mb-1">
+                                        <i class="fas fa-building"></i> ${piso}
+                                    </p>
+                                    <p class="card-text small mb-1">
+                                        <i class="fas fa-users"></i> ${mesa.capacity || 4} personas
+                                    </p>
+                                </div>
+                                <span class="badge ${status === 'libre' ? 'bg-success' : 'bg-danger'}">${estadoTexto}</span>
+                            </div>
+                            ${status === 'ocupada' && mesa.current_order ? `
+                                <hr class="my-2">
+                                <div class="small text-muted">
+                                    <i class="fas fa-receipt"></i> Pedido #${mesa.current_order.id}
+                                    <br>Total: S/. ${mesa.current_order.total}
+                                </div>
+                            ` : ''}
+                            
+                            <!-- CONTROLES DE MESA -->
+                            <div class="mesa-controls mt-3">
+                                <div class="btn-group w-100" role="group">
+                                    ${status === 'libre' ? `
+                                        <button class="btn btn-sm btn-warning w-100 occupy-table-btn" 
+                                                onclick="occupyTable(${mesa.id}, '${numero}')">
+                                            <i class="fas fa-lock"></i> Ocupar Mesa
+                                        </button>
+                                    ` : `
+                                        <button class="btn btn-sm btn-info view-order-btn" 
+                                                onclick="viewTableOrder(${mesa.id}, '${numero}')">
+                                            <i class="fas fa-eye"></i> Ver Pedido
+                                        </button>
+                                        <button class="btn btn-sm btn-success free-table-btn" 
+                                                onclick="freeTable(${mesa.id}, '${numero}')">
+                                            <i class="fas fa-unlock"></i> Liberar
+                                        </button>
+                                    `}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        container.innerHTML = html;
+        
+        // Actualizar contadores totales (no filtrados)
+        const totalLibres = mesasData.filter(m => (m.status || (m.ocupada ? 'ocupada' : 'libre')) === 'libre').length;
+        const totalOcupadas = mesasData.filter(m => (m.status || (m.ocupada ? 'ocupada' : 'libre')) === 'ocupada').length;
+        
+        contadorLibres.textContent = totalLibres;
+        contadorOcupadas.textContent = totalOcupadas;
+    }
+
+    // 4. FILTROS
+    function actualizarFiltrosZona() {
+        const container = document.getElementById('zone-filters');
+        let html = `
+            <button type="button" class="btn btn-sm btn-outline-light zone-filter active" data-zone="all">
+                <i class="fas fa-globe"></i> Todas las Zonas
+            </button>
+        `;
+        
+        zones.forEach(zona => {
+            html += `
+                <button type="button" class="btn btn-sm btn-outline-light zone-filter" data-zone="${zona}">
+                    <i class="fas fa-map-marker-alt"></i> ${zona}
+                </button>
+            `;
+        });
+        
+        container.innerHTML = html;
+        
+        // Agregar event listeners
+        container.querySelectorAll('.zone-filter').forEach(btn => {
+            btn.addEventListener('click', function() {
+                // Remover active de todos
+                container.querySelectorAll('.zone-filter').forEach(b => b.classList.remove('active'));
+                // Agregar active al clickeado
+                this.classList.add('active');
+                // Actualizar filtro
+                currentFilters.zone = this.dataset.zone;
+                aplicarFiltros();
+            });
+        });
+    }
+
+    // 5. CARGAR MENÚ
+    function cargarMenu() {
+        console.log('🔄 Cargando menú...');
+        
+        fetch('/mozo/menu', {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('✅ Datos menú:', data);
+            mostrarMenu(data);
+        })
+        .catch(error => {
+            console.error('❌ Error menú:', error);
+            document.getElementById('menuTabContent').innerHTML = 
+                '<div class="alert alert-danger">Error al cargar menú: ' + error.message + '</div>';
+        });
+    }
+
+    // 6. MOSTRAR MENÚ
+    function mostrarMenu(data) {
+        const tabsContainer = document.getElementById('menuTabs');
+        const contentContainer = document.getElementById('menuTabContent');
+        
+        let categories = [];
+        
+        if (data.success && data.categories) {
+            categories = data.categories;
+        } else if (Array.isArray(data)) {
+            categories = data;
+        } else {
+            console.error('❌ Formato de menú no reconocido:', data);
+            return;
+        }
+        
+        let tabsHtml = '';
+        let contentHtml = '';
+        
+        categories.forEach((categoria, index) => {
+            const nombre = categoria.name || categoria.nombre || 'Sin nombre';
+            const productos = categoria.products || categoria.productos || [];
+            const activeClass = index === 0 ? 'active' : '';
+            const showClass = index === 0 ? 'show active' : '';
+            
+            // Tab header
+            tabsHtml += `
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link ${activeClass}" 
+                            id="menu-tab-${index}" 
+                            data-bs-toggle="tab" 
+                            data-bs-target="#menu-content-${index}" 
+                            type="button" 
+                            role="tab">
+                        ${nombre} (${productos.length})
+                    </button>
+                </li>
+            `;
+            
+            // Tab content
+            let productosHtml = '<div class="row">';
+            
+            productos.forEach(producto => {
+                const nombreProd = producto.name || producto.nombre || 'Sin nombre';
+                const precio = parseFloat(producto.price || producto.precio || 0).toFixed(2);
+                const descripcion = producto.description || producto.descripcion || 'Sin descripción';
+                
+                productosHtml += `
+                    <div class="col-lg-4 col-md-6 mb-3">
+                        <div class="card product-card h-100" 
+                             data-product='${JSON.stringify(producto)}'>
+                            <div class="card-body d-flex flex-column">
+                                <h6 class="card-title">${nombreProd}</h6>
+                                <p class="card-text small flex-grow-1">${descripcion}</p>
+                                <div class="mt-auto">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="text-success fw-bold fs-6">S/. ${precio}</span>
+                                        <button class="btn btn-sm btn-primary add-to-cart" 
+                                                data-product-id="${producto.id}"
+                                                data-product-name="${nombreProd}"
+                                                data-product-price="${precio}">
+                                            <i class="fas fa-cart-plus"></i> Agregar
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            productosHtml += '</div>';
+            
+            contentHtml += `
+                <div class="tab-pane fade ${showClass}" 
+                     id="menu-content-${index}" 
+                     role="tabpanel">
+                    ${productosHtml}
+                </div>
+            `;
+        });
+        
+        tabsContainer.innerHTML = tabsHtml;
+        contentContainer.innerHTML = contentHtml;
+        
+        // Agregar event listeners para agregar al carrito
+        document.querySelectorAll('.add-to-cart').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const productId = this.dataset.productId;
+                const productName = this.dataset.productName;
+                const productPrice = parseFloat(this.dataset.productPrice);
+                
+                addToCart(productId, productName, productPrice);
+            });
+        });
+    }
+
+    // 7. GESTIÓN DEL CARRITO
+    function addToCart(productId, productName, productPrice) {
+        // Solicitar modificaciones al usuario
+        const modificaciones = prompt(`Modificaciones para "${productName}":\n(Ejemplo: sin cebolla, sin picante, etc.)\n\nDejar vacío si no hay modificaciones:`);
+        
+        // Buscar si el producto ya está en el carrito (con las mismas modificaciones)
+        const existingItem = cart.find(item => 
+            item.id === productId && item.modificaciones === (modificaciones || '')
+        );
+        
+        if (existingItem) {
+            existingItem.quantity += 1;
+        } else {
+            cart.push({
+                id: productId,
+                name: productName,
+                price: productPrice,
+                quantity: 1,
+                modificaciones: modificaciones || ''
+            });
+        }
+        
+        updateCartDisplay();
+        
+        // Feedback visual
+        const btn = document.querySelector(`[data-product-id="${productId}"]`);
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check"></i> Agregado';
+        btn.classList.add('btn-success');
+        btn.classList.remove('btn-primary');
+        
+        setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.classList.remove('btn-success');
+            btn.classList.add('btn-primary');
+        }, 1000);
+    }
+
+    function updateCartDisplay() {
+        const cartItemsContainer = document.getElementById('cart-items');
+        const cartCount = document.getElementById('cart-count');
+        const cartTotal = document.getElementById('cart-total');
+        const sendButton = document.getElementById('send-to-kitchen');
+        
+        if (cart.length === 0) {
+            cartItemsContainer.innerHTML = `
+                <p class="text-center small text-white-50">
+                    <i class="fas fa-shopping-cart"></i> Carrito vacío<br>
+                    <small>Agrega productos desde el menú</small>
+                </p>
+            `;
+            cartCount.textContent = '0';
+            cartTotal.textContent = '0.00';
+            sendButton.disabled = true;
+            return;
+        }
+        
+        let total = 0;
+        let totalItems = 0;
+        let html = '';
+        
+        cart.forEach((item, index) => {
+            const itemTotal = item.price * item.quantity;
+            total += itemTotal;
+            totalItems += item.quantity;
+            
+            html += `
+                <div class="cart-item">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                            <small class="fw-bold text-dark">${item.name}</small><br>
+                            <small class="text-muted">S/. ${item.price.toFixed(2)} x ${item.quantity}</small>
+                            ${item.modificaciones ? `<br><small class="text-warning"><i class="fas fa-edit"></i> ${item.modificaciones}</small>` : ''}
+                        </div>
+                        <div class="text-end">
+                            <small class="fw-bold text-dark">S/. ${itemTotal.toFixed(2)}</small><br>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-secondary btn-xs" onclick="updateCartItemQuantity(${index}, -1)">
+                                    <i class="fas fa-minus"></i>
+                                </button>
+                                <button class="btn btn-outline-secondary btn-xs" onclick="updateCartItemQuantity(${index}, 1)">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                                <button class="btn btn-outline-danger btn-xs" onclick="removeFromCart(${index})">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        cartItemsContainer.innerHTML = html;
+        cartCount.textContent = totalItems;
+        cartTotal.textContent = total.toFixed(2);
+        
+        // Habilitar botón si hay items Y (mesa seleccionada desde selector O mesa seleccionada desde botón)
+        const selectedFromDropdown = document.getElementById('cart-table').value;
+        sendButton.disabled = cart.length === 0 || (!selectedFromDropdown && !selectedTable);
+    }
+
+    function updateCartItemQuantity(index, change) {
+        cart[index].quantity += change;
+        
+        if (cart[index].quantity <= 0) {
+            cart.splice(index, 1);
+        }
+        
+        updateCartDisplay();
+    }
+
+    function removeFromCart(index) {
+        cart.splice(index, 1);
+        updateCartDisplay();
+    }
+
+    function clearCart() {
+        cart = [];
+        updateCartDisplay();
+    }
+
+    function actualizarSelectMesas() {
+        const select = document.getElementById('cart-table');
+        let html = '<option value="">Seleccionar Mesa Ocupada</option>';
+        
+        // Solo mesas ocupadas para agregar a pedidos existentes
+        const mesasOcupadas = mesasData.filter(mesa => {
+            const status = mesa.status || (mesa.ocupada ? 'ocupada' : 'libre');
+            return status === 'ocupada';
+        });
+        
+        mesasOcupadas.forEach(mesa => {
+            const numero = mesa.number || mesa.numero || 'N/A';
+            const zona = mesa.zone_name || mesa.zona || 'Sin zona';
+            const pedidoInfo = mesa.current_order ? ` - Pedido #${mesa.current_order.id}` : '';
+            html += `<option value="${mesa.id}">Mesa ${numero} (${zona})${pedidoInfo}</option>`;
+        });
+        
+        select.innerHTML = html;
+        
+        // Event listener para habilitar/deshabilitar botón enviar
+        select.addEventListener('change', function() {
+            const sendButton = document.getElementById('send-to-kitchen');
+            // Habilitar si hay items Y (mesa seleccionada desde selector O mesa seleccionada desde botón)
+            sendButton.disabled = cart.length === 0 || (!this.value && !selectedTable);
+        });
+    }
+
+    // 8. FUNCIONES DE GESTIÓN DE MESAS
+    function selectTable(tableId, tableNumber, tableZone) {
+        // Verificar que la mesa esté libre
+        const mesa = mesasData.find(m => m.id === tableId);
+        if (!mesa || mesa.status === 'ocupada') {
+            alert('Esta mesa no está disponible');
+            return;
+        }
+        
+        selectedTable = {
+            id: tableId,
+            number: tableNumber,
+            zone: tableZone
+        };
+        
+        // Actualizar UI
+        updateSelectedTableDisplay();
+        updateCartDisplay();
+        
+        // Resaltar mesa seleccionada
+        document.querySelectorAll('.mesa-card').forEach(card => {
+            card.classList.remove('mesa-selected');
+        });
+        document.querySelector(`[data-mesa-id="${tableId}"]`).classList.add('mesa-selected');
+        
+        // Cambiar al tab del menú automáticamente
+        const menuTab = document.getElementById('menu-tab');
+        menuTab.click();
+        
+        console.log(`✅ Mesa ${tableNumber} seleccionada para pedido`);
+    }
+    
+    function clearSelectedTable() {
+        selectedTable = null;
+        updateSelectedTableDisplay();
+        updateCartDisplay();
+        
+        // Quitar resaltado
+        document.querySelectorAll('.mesa-card').forEach(card => {
+            card.classList.remove('mesa-selected');
+        });
+        
+        console.log('❌ Mesa deseleccionada');
+    }
+    
+    function updateSelectedTableDisplay() {
+        const selectedTableInfo = document.getElementById('selected-table-info');
+        const selectedTableText = document.getElementById('selected-table-text');
+        
+        if (selectedTable) {
+            selectedTableText.textContent = `Mesa ${selectedTable.number} (${selectedTable.zone})`;
+            selectedTableInfo.style.display = 'block';
+        } else {
+            selectedTableInfo.style.display = 'none';
+        }
+    }
+    
+    async function occupyTable(tableId, tableNumber) {
+        if (!confirm(`¿Marcar Mesa ${tableNumber} como ocupada?`)) {
+            return;
+        }
+        
+        try {
+            const response = await fetch('/mozo/occupy-table', {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ table_id: tableId })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                alert(`Mesa ${tableNumber} marcada como ocupada`);
+                cargarMesas(); // Actualizar lista
+            } else {
+                alert('Error: ' + (result.message || 'No se pudo ocupar la mesa'));
+            }
+        } catch (error) {
+            console.error('Error ocupando mesa:', error);
+            alert('Error de conexión');
+        }
+    }
+    
+    async function freeTable(tableId, tableNumber) {
+        if (!confirm(`¿Liberar Mesa ${tableNumber}? Esto cancelará cualquier pedido activo.`)) {
+            return;
+        }
+        
+        try {
+            const response = await fetch('/mozo/free-table', {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ table_id: tableId })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                alert(`Mesa ${tableNumber} liberada`);
+                
+                // Si esta mesa estaba seleccionada, deseleccionarla
+                if (selectedTable && selectedTable.id === tableId) {
+                    clearSelectedTable();
+                }
+                
+                cargarMesas(); // Actualizar lista
+            } else {
+                alert('Error: ' + (result.message || 'No se pudo liberar la mesa'));
+            }
+        } catch (error) {
+            console.error('Error liberando mesa:', error);
+            alert('Error de conexión');
+        }
+    }
+    
+    async function viewTableOrder(tableId, tableNumber) {
+        try {
+            const response = await fetch(`/mozo/api/mesa/${tableId}/pedido`);
+            const data = await response.json();
+            
+            if (data.success && data.pedido) {
+                const pedido = data.pedido;
+                let itemsHtml = pedido.items.map(item => `
+                    <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                        <div>
+                            <strong>${item.producto}</strong> x${item.cantidad}
+                            <div class="small text-muted">${item.modificaciones || ''}</div>
+                        </div>
+                        <span class="badge bg-${getStatusBadgeColor(item.estado)}">${getStatusText(item.estado)}</span>
+                    </div>
+                `).join('');
+                
+                const modalHtml = `
+                    <div class="modal fade" id="pedidoModal" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Pedido Mesa ${tableNumber}</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="mb-3">
+                                        <strong>Estado:</strong> <span class="badge bg-${getStatusBadgeColor(pedido.estado)}">${getStatusText(pedido.estado)}</span>
+                                    </div>
+                                    <div class="mb-3">
+                                        <strong>Hora de pedido:</strong> ${pedido.hora}
+                                    </div>
+                                    <div class="mb-3">
+                                        <strong>Total:</strong> S/. ${pedido.total.toFixed(2)}
+                                    </div>
+                                    <h6>Items:</h6>
+                                    ${itemsHtml}
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Remover modal anterior si existe
+                const existingModal = document.getElementById('pedidoModal');
+                if (existingModal) {
+                    existingModal.remove();
+                }
+                
+                // Agregar modal al DOM
+                document.body.insertAdjacentHTML('beforeend', modalHtml);
+                
+                // Mostrar modal
+                const modal = new bootstrap.Modal(document.getElementById('pedidoModal'));
+                modal.show();
+            } else {
+                alert('No se encontró pedido para esta mesa');
+            }
+        } catch (error) {
+            console.error('Error obteniendo pedido:', error);
+            alert('Error al obtener información del pedido');
+        }
+    }
+    
+    function getStatusBadgeColor(estado) {
+        const colors = {
+            'pending': 'warning',
+            'preparing': 'info', 
+            'ready': 'success',
+            'served': 'primary'
+        };
+        return colors[estado] || 'secondary';
+    }
+    
+    function getStatusText(estado) {
+        const texts = {
+            'pending': 'Pendiente',
+            'preparing': 'Preparando',
+            'ready': 'Listo',
+            'served': 'Entregado'
+        };
+        return texts[estado] || estado;
+    }
+
+    async function sendToKitchen() {
+        const selectedFromDropdown = document.getElementById('cart-table').value;
+        
+        // Determinar qué mesa usar: la del dropdown (para mesas ocupadas) o la seleccionada (para mesas libres)
+        let targetTableId, targetTableInfo;
+        
+        if (selectedFromDropdown) {
+            // Mesa ocupada seleccionada desde dropdown
+            targetTableId = parseInt(selectedFromDropdown);
+            const mesa = mesasData.find(m => m.id === targetTableId);
+            targetTableInfo = `Mesa ${mesa.number || mesa.numero} (agregar a pedido existente)`;
+        } else if (selectedTable) {
+            // Mesa libre seleccionada desde botón
+            targetTableId = selectedTable.id;
+            targetTableInfo = `Mesa ${selectedTable.number} (nuevo pedido)`;
+        } else {
+            alert('Selecciona una mesa para enviar el pedido');
+            return;
+        }
+        
+        if (cart.length === 0) {
+            alert('Agrega productos al carrito');
+            return;
+        }
+        
+        const orderData = {
+            table_id: targetTableId,
+            items: cart.map(item => ({
+                product_id: parseInt(item.id),
+                quantity: item.quantity,
+                unit_price: item.price,
+                special_instructions: item.modificaciones || ''
+            }))
+        };
+        
+        console.log('📤 Enviando pedido:', orderData);
+        
+        try {
+            const response = await fetch('/mozo/create-order', {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(orderData)
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                alert(`¡Pedido #${result.order_id} enviado a cocina!\n${targetTableInfo}\nTotal: S/. ${result.total_amount}`);
+                clearCart();
+                clearSelectedTable();
+                document.getElementById('cart-table').value = ''; // Limpiar selector
+                cargarMesas(); // Actualizar estado de mesas
+            } else {
+                alert('Error al enviar pedido: ' + (result.message || 'Error desconocido'));
+            }
+        } catch (error) {
+            console.error('❌ Error enviando pedido:', error);
+            alert('Error de conexión al enviar pedido');
+        }
+    }
+
+    // 8. EVENT LISTENERS
+    document.addEventListener('DOMContentLoaded', function() {
+        // Event listeners para filtros de estado
+        document.querySelectorAll('.status-filter').forEach(btn => {
+            btn.addEventListener('click', function() {
+                // Remover active de todos
+                document.querySelectorAll('.status-filter').forEach(b => b.classList.remove('active'));
+                // Agregar active al clickeado
+                this.classList.add('active');
+                // Actualizar filtro
+                currentFilters.status = this.dataset.status;
+                aplicarFiltros();
+            });
+        });
+        
+        // Event listeners para botones del carrito
+        document.getElementById('send-to-kitchen').addEventListener('click', sendToKitchen);
+        document.getElementById('clear-cart').addEventListener('click', clearCart);
+        
+        // Inicializar datos
+        inicializar();
+    });
+
+    // 9. INICIALIZACIÓN
+    function inicializar() {
+        console.log('🚀 Inicializando dashboard...');
+        
+        cargarPerfil();
+        cargarMesas();
+        cargarMenu();
+        
+        // Auto-actualizar cada 5 segundos (más rápido y responsivo)
+        setInterval(() => {
+            console.log('🔄 Auto-actualizando mesas...');
+            cargarMesas(); // Solo mesas, el menú no cambia frecuentemente
+        }, 5000); // Cambiado de 30000 a 5000 (5 segundos)
+    }
+    </script>
+</body>
+</html>
+{% endblock %}

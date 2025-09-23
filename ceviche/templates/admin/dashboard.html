@@ -1,0 +1,478 @@
+﻿{% extends "base.html" %}
+{% block title %}Admin Dashboard - Cevichería{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1><i class="fas fa-tachometer-alt"></i> Panel Administrativo</h1>
+            <p class="text-muted">Supervisión en tiempo real del sistema</p>
+        </div>
+    </div>
+
+    <!-- Estadísticas principales -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 id="mesas-ocupadas">-</h4>
+                            <p class="mb-0">Mesas Ocupadas</p>
+                            <small id="mesas-detalle">de - total</small>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-table fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 id="sesiones-activas">-</h4>
+                            <p class="mb-0">Sesiones Activas</p>
+                            <small id="usuarios-por-rol">-</small>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-users fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 id="pedidos-pendientes">-</h4>
+                            <p class="mb-0">Pedidos Pendientes</p>
+                            <small>En cocina</small>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-clock fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 id="pedidos-hoy">-</h4>
+                            <p class="mb-0">Pedidos Hoy</p>
+                            <small>Total del día</small>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-chart-line fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Sesiones Activas -->
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5><i class="fas fa-users"></i> Sesiones Activas</h5>
+                    <button class="btn btn-sm btn-outline-primary" onclick="refreshData()">
+                        <i class="fas fa-sync-alt"></i> Actualizar
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Usuario</th>
+                                    <th>Rol</th>
+                                    <th>Inicio</th>
+                                    <th>Tiempo Activo</th>
+                                    <th>IP</th>
+                                    <th>Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sesiones-table">
+                                <tr>
+                                    <td colspan="6" class="text-center">
+                                        <div class="spinner-border spinner-border-sm" role="status">
+                                            <span class="visually-hidden">Cargando...</span>
+                                        </div>
+                                        Cargando sesiones...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel de Control -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-cogs"></i> Control Remoto</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Cerrar sesión por usuario:</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="username-logout" placeholder="Ej: mozo1">
+                            <button class="btn btn-danger" onclick="forceLogoutByUsername()">
+                                <i class="fas fa-sign-out-alt"></i> Cerrar
+                            </button>
+                        </div>
+                        <small class="text-muted">Cerrará todas las sesiones del usuario</small>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-warning" onclick="refreshData()">
+                            <i class="fas fa-sync-alt"></i> Actualizar Dashboard
+                        </button>
+                        <a href="/admin/supervision" class="btn btn-info">
+                            <i class="fas fa-chart-line"></i> Supervisión Detallada
+                        </a>
+                        <a href="/admin/menu-management" class="btn btn-success">
+                            <i class="fas fa-utensils"></i> Gestión de Menú
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Log de Actividad -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6><i class="fas fa-history"></i> Log de Actividad</h6>
+                </div>
+                <div class="card-body p-2">
+                    <div id="activity-log" style="height: 200px; overflow-y: auto; font-size: 0.85rem;">
+                        <div class="text-muted text-center">Esperando actividad...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let refreshInterval;
+
+// Cargar datos iniciales
+document.addEventListener('DOMContentLoaded', function() {
+    refreshData();
+    // Auto-refresh cada 5 segundos
+    refreshInterval = setInterval(refreshData, 5000);
+});
+
+function refreshData() {
+    fetch('/admin/api/dashboard-stats', {
+        credentials: 'include'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            updateDashboard(data.stats);
+        } else {
+            console.error('Error:', data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        addLogEntry('Error al cargar datos', 'danger');
+    });
+}
+
+function updateDashboard(stats) {
+    // Actualizar estadísticas principales
+    document.getElementById('mesas-ocupadas').textContent = stats.mesas.ocupadas;
+    document.getElementById('mesas-detalle').textContent = `de ${stats.mesas.total} total`;
+    
+    document.getElementById('sesiones-activas').textContent = stats.sesiones.total_activas;
+    document.getElementById('usuarios-por-rol').textContent = 
+        `Admin: ${stats.sesiones.por_rol.admin}, Mozo: ${stats.sesiones.por_rol.mozo}, Cocina: ${stats.sesiones.por_rol.cocina}`;
+    
+    document.getElementById('pedidos-pendientes').textContent = stats.pedidos.pendientes;
+    document.getElementById('pedidos-hoy').textContent = stats.pedidos.hoy;
+    
+    // Actualizar tabla de sesiones
+    updateSessionsTable(stats.sesiones.detalle);
+}
+
+function updateSessionsTable(sesiones) {
+    const tbody = document.getElementById('sesiones-table');
+    
+    if (sesiones.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No hay sesiones activas</td></tr>';
+        return;
+    }
+    
+    let html = '';
+    sesiones.forEach(session => {
+        const roleClass = getRoleClass(session.role);
+        html += `
+            <tr>
+                <td><strong>${session.username}</strong></td>
+                <td><span class="badge ${roleClass}">${session.role}</span></td>
+                <td>${session.created_at}</td>
+                <td>${session.tiempo_activo}</td>
+                <td><small>${session.ip_address}</small></td>
+                <td>
+                    <button class="btn btn-sm btn-outline-danger" 
+                            onclick="forceLogoutSession(${session.session_id}, '${session.username}')"
+                            title="Cerrar sesión">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+    
+    tbody.innerHTML = html;
+}
+
+function getRoleClass(role) {
+    const classes = {
+        'admin': 'bg-danger',
+        'mozo': 'bg-primary',
+        'cocina': 'bg-warning',
+        'cajero': 'bg-success'
+    };
+    return classes[role] || 'bg-secondary';
+}
+
+function forceLogoutSession(sessionId, username) {
+    if (!confirm(`¿Cerrar sesión de ${username}?`)) return;
+    
+    fetch('/admin/api/force-logout', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            session_id: sessionId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            addLogEntry(`✅ Sesión de ${username} cerrada`, 'success');
+            refreshData();
+        } else {
+            addLogEntry(`❌ Error: ${data.message}`, 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        addLogEntry('❌ Error de conexión', 'danger');
+    });
+}
+
+function forceLogoutByUsername() {
+    const username = document.getElementById('username-logout').value.trim();
+    if (!username) {
+        alert('Ingresa un nombre de usuario');
+        return;
+    }
+    
+    if (!confirm(`¿Cerrar TODAS las sesiones de ${username}?`)) return;
+    
+    fetch('/admin/api/force-logout', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            username: username
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            addLogEntry(`✅ ${data.closed_sessions} sesión(es) de ${username} cerradas`, 'success');
+            document.getElementById('username-logout').value = '';
+            refreshData();
+        } else {
+            addLogEntry(`❌ Error: ${data.message}`, 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        addLogEntry('❌ Error de conexión', 'danger');
+    });
+}
+
+function addLogEntry(message, type = 'info') {
+    const log = document.getElementById('activity-log');
+    const time = new Date().toLocaleTimeString();
+    const alertClass = type === 'success' ? 'alert-success' : 
+                      type === 'danger' ? 'alert-danger' : 'alert-info';
+    
+    const entry = document.createElement('div');
+    entry.className = `alert ${alertClass} alert-sm mb-1 py-1 px-2`;
+    entry.innerHTML = `<small><strong>${time}</strong> ${message}</small>`;
+    
+    log.insertBefore(entry, log.firstChild);
+    
+    // Mantener solo las últimas 10 entradas
+    while (log.children.length > 10) {
+        log.removeChild(log.lastChild);
+    }
+}
+
+// Limpiar interval al salir
+window.addEventListener('beforeunload', function() {
+    if (refreshInterval) {
+        clearInterval(refreshInterval);
+    }
+});
+</script>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-server"></i> Estado del Sistema</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tbody id="estado-sistema">
+                            <!-- Estado dinámico -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">Actividad Reciente</div>
+                <div class="card-body">
+                    <div id="actividad-reciente"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+// JavaScript para dashboard admin
+let statsInterval;
+
+function updateStats() {
+    fetch('/admin/status')
+        .then(response => response.json())
+        .then(data => {
+            // Solo actualizar estado del sistema y actividad reciente
+            updateSystemStatus(data.sistema || {});
+            updateRecentActivity(data.actividad_reciente || []);
+        })
+        .catch(error => {
+            console.error('Error actualizando estadísticas:', error);
+            // Mostrar indicador de error temporal
+            showConnectionError();
+        });
+}
+
+function animateStatUpdate(elementId, newValue) {
+    // Ya no se usa, pero mantengo por compatibilidad
+    const element = document.getElementById(elementId);
+    if (element && element.textContent !== newValue.toString()) {
+        element.style.transform = 'scale(1.1)';
+        element.style.color = '#28a745';
+        element.textContent = newValue;
+        
+        setTimeout(() => {
+            element.style.transform = 'scale(1)';
+            element.style.color = '';
+        }, 300);
+    }
+}
+
+function updateSystemStatus(sistema) {
+    const container = document.getElementById('estado-sistema');
+    container.innerHTML = `
+        <tr>
+            <td><i class="fas fa-server"></i> Servidor</td>
+            <td><span class="badge bg-success">Activo</span></td>
+        </tr>
+        <tr>
+            <td><i class="fas fa-database"></i> Base de Datos</td>
+            <td><span class="badge bg-success">Conectada</span></td>
+        </tr>
+        <tr>
+            <td><i class="fas fa-users"></i> Sesiones Activas</td>
+            <td>${sistema.sesiones_activas || 0}</td>
+        </tr>
+        <tr>
+            <td><i class="fas fa-clock"></i> Tiempo Activo</td>
+            <td>${sistema.tiempo_activo || 'N/A'}</td>
+        </tr>
+    `;
+}
+
+function updateRecentActivity(actividades) {
+    const container = document.getElementById('actividad-reciente');
+    if (actividades.length === 0) {
+        container.innerHTML = '<p class="text-muted text-center">Sin actividad reciente</p>';
+        return;
+    }
+    
+    container.innerHTML = actividades.slice(0, 5).map(actividad => `
+        <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+            <div>
+                <small class="text-muted">${actividad.tipo}</small>
+                <p class="mb-0">${actividad.descripcion}</p>
+            </div>
+            <small class="text-muted">${actividad.tiempo}</small>
+        </div>
+    `).join('');
+}
+
+function showConnectionError() {
+    const errorElement = document.createElement('div');
+    errorElement.className = 'alert alert-warning alert-dismissible fade show position-fixed';
+    errorElement.style.cssText = 'top: 20px; right: 20px; z-index: 1055; max-width: 300px;';
+    errorElement.innerHTML = `
+        <i class="fas fa-exclamation-triangle"></i> 
+        Error de conexión. Reintentando...
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(errorElement);
+    
+    setTimeout(() => {
+        if (errorElement.parentNode) {
+            errorElement.remove();
+        }
+    }, 3000);
+}
+
+// Inicializar dashboard
+document.addEventListener('DOMContentLoaded', function() {
+    // Cargar estadísticas inmediatamente
+    updateStats();
+    
+    // Actualizar cada 5 segundos
+    statsInterval = setInterval(updateStats, 5000);
+});
+
+// Limpiar interval al salir
+window.addEventListener('beforeunload', function() {
+    if (statsInterval) {
+        clearInterval(statsInterval);
+    }
+});
+</script>
+{% endblock %}

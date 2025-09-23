@@ -1,0 +1,1153 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Cevichería System{% endblock %}</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #006A96; /* Azul océano */
+            --secondary-color: #C8102E; /* Rojo peruano */
+            --accent-color: #F4B942; /* Dorado peruano */
+            --ocean-blue: #4ECDC4; /* Azul turquesa */
+            --deep-blue: #1B4C73; /* Azul profundo */
+            --coral: #FF6B6B; /* Coral */
+            --seafoam: #95E1D3; /* Verde mar */
+            --sand: #F8E6A0; /* Color arena */
+            --success-green: #28A745; /* Verde éxito */
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            background: linear-gradient(135deg, #F0F8FF 0%, #E3F2FD 100%);
+            color: var(--deep-blue);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .navbar {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--deep-blue) 100%);
+            color: white;
+            padding: 1rem 0;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,106,150,0.2);
+        }
+        
+        .navbar .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+        }
+        
+        .navbar h1 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 20px;
+        }
+        
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            padding: 10px 18px;
+            border-radius: 25px;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+        
+        .nav-links a:hover {
+            background: rgba(255,255,255,0.2);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+        
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 20px rgba(0,106,150,0.1);
+            border: 1px solid rgba(149,225,211,0.2);
+            transition: transform 0.3s;
+        }
+        
+        .card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(0,106,150,0.15);
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--deep-blue);
+        }
+        
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #E0F2F1;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s;
+            background: #FAFAFA;
+        }
+        
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: var(--ocean-blue);
+            background: white;
+            box-shadow: 0 0 0 3px rgba(76,205,196,0.1);
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, var(--primary-color), var(--deep-blue));
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(0,106,150,0.2);
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,106,150,0.3);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, var(--secondary-color), var(--coral));
+        }
+        
+        .btn-danger:hover {
+            background: linear-gradient(135deg, #A00E26, var(--secondary-color));
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, var(--seafoam), var(--success-green));
+            color: var(--deep-blue);
+        }
+        
+        .btn-success:hover {
+            background: linear-gradient(135deg, #7DDCC4, var(--seafoam));
+        }
+        
+        .btn-warning {
+            background: linear-gradient(135deg, var(--accent-color), var(--sand));
+            color: var(--deep-blue);
+        }
+        
+        .btn-warning:hover {
+            background: linear-gradient(135deg, #E5A53A, var(--accent-color));
+        }
+        
+        .alert {
+            padding: 18px 20px;
+            margin-bottom: 25px;
+            border-radius: 10px;
+            border: none;
+            font-weight: 500;
+        }
+        
+        .alert-success {
+            background: linear-gradient(135deg, var(--seafoam), #E8F8F5);
+            color: var(--deep-blue);
+            border-left: 5px solid var(--seafoam);
+        }
+        
+        .alert-danger {
+            background: linear-gradient(135deg, #FFE6E6, #FFF0F0);
+            color: var(--secondary-color);
+            border-left: 5px solid var(--secondary-color);
+        }
+        
+        .alert-warning {
+            background: linear-gradient(135deg, var(--sand), #FFF9E6);
+            color: var(--deep-blue);
+            border-left: 5px solid var(--accent-color);
+        }
+        
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,106,150,0.1);
+        }
+        
+        .table th, .table td {
+            padding: 15px 18px;
+            text-align: left;
+            border-bottom: 1px solid #E0F2F1;
+        }
+        
+        .table th {
+            background: linear-gradient(135deg, var(--primary-color), var(--ocean-blue));
+            color: white;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.9rem;
+            letter-spacing: 0.5px;
+        }
+        
+        .table tbody tr:hover {
+            background: linear-gradient(135deg, #F0F8FF, #E3F2FD);
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .text-center {
+            text-align: center;
+        }
+        
+        .mb-3 {
+            margin-bottom: 1rem;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .navbar .container {
+                flex-direction: column;
+                gap: 15px;
+                padding: 15px 10px;
+            }
+            
+            .navbar h1 {
+                font-size: 1.5rem;
+                text-align: center;
+            }
+            
+            .nav-links {
+                gap: 10px;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            
+            .nav-links a {
+                padding: 8px 15px;
+                font-size: 0.9rem;
+            }
+            
+            .container {
+                padding: 10px;
+            }
+            
+            .card {
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 10px;
+            }
+            
+            /* Mejorar dropdowns en móviles */
+            .form-select, .form-control {
+                font-size: 16px !important; /* Previene zoom en iOS */
+                min-height: 45px;
+                border-radius: 8px;
+            }
+            
+            /* Layout de columnas para móviles */
+            .row {
+                margin: 0 -5px;
+            }
+            
+            .col-md-3, .col-md-4, .col-md-6, .col-md-8, .col-md-9, .col-md-12 {
+                padding: 0 5px;
+                margin-bottom: 10px;
+            }
+            
+            /* Botones más accesibles en móviles */
+            .btn {
+                padding: 12px 20px;
+                font-size: 14px;
+                min-height: 45px;
+                width: 100%;
+                margin-bottom: 10px;
+            }
+            
+            .btn-group .btn {
+                width: auto;
+                margin: 0;
+            }
+            
+            /* Mejorar tablas en móviles */
+            .table-responsive {
+                border: none;
+                font-size: 0.9rem;
+            }
+            
+            .table th, .table td {
+                padding: 10px 8px;
+                font-size: 0.85rem;
+            }
+            
+            /* Mejorar modales en móviles */
+            .modal-dialog {
+                margin: 10px;
+                max-width: calc(100% - 20px);
+            }
+            
+            .modal-body {
+                padding: 15px;
+            }
+            
+            /* Grid responsivo */
+            .grid {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+            
+            /* Específico para dashboard mozo */
+            .dashboard-header {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .dashboard-actions {
+                flex-direction: column;
+                gap: 10px;
+                align-items: stretch;
+            }
+            
+            /* Carrito en móviles */
+            .carrito-item {
+                flex-direction: column;
+                gap: 8px;
+                padding: 10px;
+            }
+            
+            .carrito-controls {
+                justify-content: space-between;
+                width: 100%;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .navbar h1 {
+                font-size: 1.3rem;
+            }
+            
+            .nav-links a {
+                padding: 6px 12px;
+                font-size: 0.85rem;
+            }
+            
+            .card {
+                padding: 12px;
+                border-radius: 8px;
+            }
+            
+            .btn {
+                padding: 10px 15px;
+                font-size: 13px;
+                min-height: 42px;
+            }
+            
+            /* Dropdowns más grandes en móviles muy pequeños */
+            .form-select, .form-control {
+                min-height: 48px;
+                font-size: 16px !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <h1>🍤 Sistema Cevichería</h1>
+            <div class="nav-links" id="navLinks">
+                <a href="/dashboard" id="dashboardLink" class="hidden">📊 Dashboard</a>
+                <a href="#" id="logoutLink" class="hidden" onclick="logout()">🚪 Cerrar Sesión</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div id="alerts"></div>
+        {% block content %}{% endblock %}
+    </div>
+
+    <script>
+        // Variables globales
+        let currentUser = null;
+        let authToken = localStorage.getItem('authToken');
+
+        // Verificar autenticación al cargar la página
+        document.addEventListener('DOMContentLoaded', function() {
+            if (authToken) {
+                checkAuth();
+            }
+            updateNavbar();
+        });
+
+        // Verificar autenticación y detectar cierre remoto
+        async function checkAuth() {
+            try {
+                const response = await fetch('/api/auth/profile', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const userData = await response.json();
+                    
+                    // Verificar si el usuario cambió (para detectar cierres remotos)
+                    if (currentUser && userData.user && currentUser.user.id !== userData.user.id) {
+                        // El usuario cambió, significa que hubo un cierre remoto
+                        showAlert('Tu sesión fue cerrada remotamente. Recargando página...', 'warning');
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 2000);
+                        return;
+                    }
+                    
+                    currentUser = userData;
+                    updateNavbar();
+                } else if (response.status === 401) {
+                    // Token inválido o expirado
+                    showAlert('Tu sesión ha expirado. Redirigiendo al login...', 'warning');
+                    setTimeout(() => {
+                        logout();
+                    }, 1500);
+                } else {
+                    logout();
+                }
+            } catch (error) {
+                console.error('Error verificando autenticación:', error);
+                // No cerrar sesión en errores de red para evitar pérdida de trabajo
+                if (error.name !== 'NetworkError' && error.name !== 'TypeError') {
+                    logout();
+                }
+            }
+        }
+
+        // Actualizar barra de navegación
+        function updateNavbar() {
+            const dashboardLink = document.getElementById('dashboardLink');
+            const logoutLink = document.getElementById('logoutLink');
+            
+            // No mostrar botones en la página de login
+            const isLoginPage = window.location.pathname === '/login' || window.location.pathname.endsWith('/login');
+
+            if (currentUser && !isLoginPage) {
+                // Solo mostrar Dashboard para usuarios admin
+                if (currentUser.role === 'admin') {
+                    dashboardLink.classList.remove('hidden');
+                } else {
+                    dashboardLink.classList.add('hidden');
+                }
+                logoutLink.classList.remove('hidden');
+            } else {
+                dashboardLink.classList.add('hidden');
+                logoutLink.classList.add('hidden');
+            }
+        }
+
+        // Cerrar sesión
+        async function logout() {
+            if (authToken) {
+                try {
+                    await fetch('/api/auth/logout', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${authToken}`
+                        }
+                    });
+                } catch (error) {
+                    console.error('Error cerrando sesión:', error);
+                }
+            }
+            
+            localStorage.removeItem('authToken');
+            authToken = null;
+            currentUser = null;
+            updateNavbar();
+            window.location.href = '/login';
+        }
+
+        // Mostrar alertas
+        function showAlert(message, type = 'success') {
+            const alertsContainer = document.getElementById('alerts');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            
+            alertsContainer.appendChild(alert);
+            
+            setTimeout(() => {
+                alert.remove();
+            }, 5000);
+        }
+
+        // Realizar petición autenticada
+        async function authenticatedFetch(url, options = {}) {
+            const headers = {
+                'Content-Type': 'application/json',
+                ...options.headers
+            };
+            
+            if (authToken) {
+                headers.Authorization = `Bearer ${authToken}`;
+            }
+            
+            return fetch(url, {
+                ...options,
+                headers
+            });
+        }
+
+        // Sistema de detección de inactividad
+        let inactivityTimer;
+        let confirmationTimer;
+        let isShowingConfirmation = false;
+        let lastActivity = Date.now();
+        
+        const INACTIVITY_TIME = 5 * 60 * 1000; // 5 minutos
+        const CONFIRMATION_TIME = 2 * 60 * 1000; // 2 minutos para responder
+        
+        function resetInactivityTimer() {
+            lastActivity = Date.now();
+            clearTimeout(inactivityTimer);
+            clearTimeout(confirmationTimer);
+            
+            // Solo iniciar timer si hay usuario logueado
+            if (currentUser) {
+                inactivityTimer = setTimeout(showInactivityConfirmation, INACTIVITY_TIME);
+            }
+            
+            // Cerrar modal si está abierto
+            if (isShowingConfirmation) {
+                closeInactivityModal();
+            }
+        }
+        
+        function showInactivityConfirmation() {
+            if (isShowingConfirmation) return;
+            
+            isShowingConfirmation = true;
+            
+            // Crear modal de confirmación
+            const modalHtml = `
+                <div class="modal fade" id="inactivityModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content border-warning">
+                            <div class="modal-header bg-warning text-dark">
+                                <h5 class="modal-title">
+                                    <i class="fas fa-clock"></i> Sesión por expirar
+                                </h5>
+                            </div>
+                            <div class="modal-body text-center">
+                                <div class="mb-3">
+                                    <i class="fas fa-user-clock fa-3x text-warning"></i>
+                                </div>
+                                <h6>¿Sigues ahí?</h6>
+                                <p>Tu sesión expirará en <span id="countdown">2:00</span> minutos por inactividad.</p>
+                                <p><small class="text-muted">Haz clic en "Seguir activo" para continuar trabajando.</small></p>
+                            </div>
+                            <div class="modal-footer justify-content-center">
+                                <button type="button" class="btn btn-success" onclick="stayActive()">
+                                    <i class="fas fa-check"></i> Seguir activo
+                                </button>
+                                <button type="button" class="btn btn-secondary" onclick="logoutNow()">
+                                    <i class="fas fa-sign-out-alt"></i> Cerrar sesión
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Agregar modal al DOM
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            
+            // Mostrar modal
+            const modal = new bootstrap.Modal(document.getElementById('inactivityModal'));
+            modal.show();
+            
+            // Iniciar countdown
+            startCountdown();
+            
+            // Timer para cerrar sesión automáticamente
+            confirmationTimer = setTimeout(() => {
+                logoutNow();
+            }, CONFIRMATION_TIME);
+        }
+        
+        function startCountdown() {
+            let timeLeft = CONFIRMATION_TIME / 1000; // En segundos
+            const countdownElement = document.getElementById('countdown');
+            
+            const countdownInterval = setInterval(() => {
+                const minutes = Math.floor(timeLeft / 60);
+                const seconds = timeLeft % 60;
+                
+                if (countdownElement) {
+                    countdownElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                }
+                
+                timeLeft--;
+                
+                if (timeLeft < 0 || !isShowingConfirmation) {
+                    clearInterval(countdownInterval);
+                }
+            }, 1000);
+        }
+        
+        function stayActive() {
+            closeInactivityModal();
+            resetInactivityTimer();
+            showAlert('Sesión extendida exitosamente', 'success');
+        }
+        
+        function closeInactivityModal() {
+            isShowingConfirmation = false;
+            const modal = document.getElementById('inactivityModal');
+            if (modal) {
+                const bsModal = bootstrap.Modal.getInstance(modal);
+                if (bsModal) {
+                    bsModal.hide();
+                }
+                modal.remove();
+            }
+            clearTimeout(confirmationTimer);
+        }
+        
+        async function logoutNow() {
+            try {
+                await authenticatedFetch('/api/auth/logout', { method: 'POST' });
+            } catch (error) {
+                console.error('Error en logout:', error);
+            }
+            
+            // Limpiar datos locales
+            localStorage.removeItem('authToken');
+            authToken = null;
+            currentUser = null;
+            
+            closeInactivityModal();
+            showAlert('Sesión cerrada por inactividad', 'info');
+            
+            setTimeout(() => {
+                window.location.href = '/login';
+            }, 1000);
+        }
+        
+        // Detectar actividad del usuario
+        function setupActivityDetection() {
+            const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+            
+            events.forEach(event => {
+                document.addEventListener(event, resetInactivityTimer, true);
+            });
+            
+            // Inicializar timer si hay usuario logueado
+            if (currentUser) {
+                resetInactivityTimer();
+            }
+        }
+
+        // Funciones para manejar sesiones duplicadas
+        function showSessionConflictModal(sessionData) {
+            const modalHtml = `
+                <div class="modal fade" id="sessionConflictModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header bg-warning text-dark">
+                                <h5 class="modal-title">
+                                    <i class="fas fa-exclamation-triangle"></i> Sesiones activas detectadas
+                                </h5>
+                            </div>
+                            <div class="modal-body">
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-info-circle"></i>
+                                    El usuario <strong>${sessionData.user_info.username}</strong> ya tiene sesiones activas en otros dispositivos.
+                                </div>
+                                
+                                <h6><i class="fas fa-desktop"></i> Sesiones activas:</h6>
+                                <div class="list-group mb-3">
+                                    ${sessionData.existing_sessions.map(session => `
+                                        <div class="list-group-item">
+                                            <div class="d-flex justify-content-between align-items-start">
+                                                <div>
+                                                    <strong>Dispositivo:</strong> ${session.device_info || 'Desconocido'}<br>
+                                                    <strong>IP:</strong> ${session.ip_address || 'Desconocida'}<br>
+                                                    <strong>Inicio:</strong> ${new Date(session.created_at).toLocaleString()}
+                                                </div>
+                                                <span class="badge bg-success">Activa</span>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                                
+                                <p class="text-muted mb-0">
+                                    <i class="fas fa-question-circle"></i>
+                                    ¿Qué deseas hacer?
+                                </p>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" onclick="cancelLogin()">
+                                    <i class="fas fa-times"></i> Cancelar
+                                </button>
+                                <button type="button" class="btn btn-danger" onclick="forceLogin()">
+                                    <i class="fas fa-sign-in-alt"></i> Cerrar otras sesiones e ingresar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Agregar modal al DOM
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            
+            // Mostrar modal
+            const modal = new bootstrap.Modal(document.getElementById('sessionConflictModal'));
+            modal.show();
+        }
+
+        function showTableSelectionModal(tables) {
+            return new Promise((resolve) => {
+                const modalHtml = `
+                    <div class="modal fade" id="tableSelectionModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header bg-primary text-white">
+                                    <h5 class="modal-title">
+                                        <i class="fas fa-utensils"></i> Seleccionar Mesa
+                                    </h5>
+                                </div>
+                                <div class="modal-body">
+                                    <p class="mb-3">
+                                        <i class="fas fa-info-circle text-info"></i>
+                                        Selecciona la mesa que deseas atender:
+                                    </p>
+                                    <div class="row">
+                                        ${tables.map(table => `
+                                            <div class="col-6 col-md-4 mb-2">
+                                                <button type="button" class="btn btn-outline-primary w-100 table-option" 
+                                                        data-table-id="${table.id}" onclick="selectTable(${table.id})">
+                                                    <i class="fas fa-chair"></i><br>
+                                                    Mesa ${table.number}
+                                                    ${table.available ? '<small class="d-block text-success">Disponible</small>' : '<small class="d-block text-warning">Ocupada</small>'}
+                                                </button>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" onclick="closeTableModal()">
+                                        <i class="fas fa-times"></i> Cancelar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Agregar modal al DOM
+                document.body.insertAdjacentHTML('beforeend', modalHtml);
+                
+                // Mostrar modal
+                const modal = new bootstrap.Modal(document.getElementById('tableSelectionModal'));
+                modal.show();
+                
+                // Guardar resolve para usarlo en selectTable
+                window.tableSelectionResolve = resolve;
+            });
+        }
+
+        function selectTable(tableId) {
+            // Resolver la promesa con el ID de la mesa seleccionada
+            if (window.tableSelectionResolve) {
+                window.tableSelectionResolve(tableId);
+                delete window.tableSelectionResolve;
+            }
+            
+            // Cerrar modal
+            closeTableModal();
+        }
+
+        function closeTableModal() {
+            const modal = document.getElementById('tableSelectionModal');
+            if (modal) {
+                const bsModal = bootstrap.Modal.getInstance(modal);
+                if (bsModal) {
+                    bsModal.hide();
+                }
+                modal.remove();
+            }
+            
+            // Resolver con null si se cancela
+            if (window.tableSelectionResolve) {
+                window.tableSelectionResolve(null);
+                delete window.tableSelectionResolve;
+            }
+        }
+
+        function cancelLogin() {
+            const modal = document.getElementById('sessionConflictModal');
+            if (modal) {
+                const bsModal = bootstrap.Modal.getInstance(modal);
+                if (bsModal) {
+                    bsModal.hide();
+                }
+                modal.remove();
+            }
+            
+            // Limpiar formulario de login
+            const loginForm = document.querySelector('form[action*="login"]');
+            if (loginForm) {
+                loginForm.reset();
+            }
+            
+            showAlert('Inicio de sesión cancelado', 'info');
+        }
+
+        async function forceLogin() {
+            try {
+                // Obtener datos del formulario original
+                const loginForm = document.querySelector('form[action*="login"]');
+                if (!loginForm) {
+                    throw new Error('Formulario de login no encontrado');
+                }
+                
+                const formData = new FormData(loginForm);
+                const loginData = {
+                    username: formData.get('username'),
+                    password: formData.get('password'),
+                    force_new: true
+                };
+                
+                const response = await fetch('/api/auth/close-remote-sessions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(loginData)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    // Guardar token y redirigir
+                    localStorage.setItem('authToken', result.access_token);
+                    
+                    // Cerrar modal
+                    const modal = document.getElementById('sessionConflictModal');
+                    if (modal) {
+                        const bsModal = bootstrap.Modal.getInstance(modal);
+                        if (bsModal) {
+                            bsModal.hide();
+                        }
+                        modal.remove();
+                    }
+                    
+                    showAlert(result.message || 'Sesión iniciada exitosamente', 'success');
+                    
+                    // Redirigir según el rol
+                    setTimeout(() => {
+                        const role = result.user.role;
+                        if (role === 'admin') {
+                            window.location.href = '/admin';
+                        } else if (role === 'mozo') {
+                            window.location.href = '/mozo';
+                        } else if (role === 'cocina') {
+                            window.location.href = '/cocina';
+                        } else if (role === 'cajero') {
+                            window.location.href = '/caja';
+                        } else {
+                            window.location.href = '/dashboard';
+                        }
+                    }, 1000);
+                } else {
+                    throw new Error(result.message || 'Error en el servidor');
+                }
+            } catch (error) {
+                console.error('Error forzando login:', error);
+                showAlert(error.message || 'Error al cerrar sesiones remotas', 'error');
+            }
+        }
+        
+        // Sistema de verificación periódica de sesión remota
+        let sessionCheckInterval;
+        
+        function startSessionMonitoring() {
+            // Verificar sesión cada 3 segundos si el usuario está logueado
+            if (authToken && !sessionCheckInterval) {
+                sessionCheckInterval = setInterval(async () => {
+                    if (authToken && currentUser) {
+                        await checkRemoteSessionStatus();
+                    } else {
+                        // Si no hay token o usuario, detener monitoreo
+                        stopSessionMonitoring();
+                    }
+                }, 3000); // 3 segundos para detección rápida de logout remoto
+            }
+        }
+        
+        async function checkRemoteSessionStatus() {
+            try {
+                const response = await fetch('/api/auth/verify-session', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (response.status === 401) {
+                    // Sesión cerrada remotamente o expirada
+                    const data = await response.json();
+                    if (data.message && data.message.includes('administrador')) {
+                        showAlert('Tu sesión fue cerrada por un administrador. Redirigiendo al login...', 'warning');
+                    } else {
+                        showAlert('Tu sesión ha expirado. Redirigiendo al login...', 'warning');
+                    }
+                    
+                    // Limpiar datos y redirigir
+                    localStorage.removeItem('authToken');
+                    authToken = null;
+                    currentUser = null;
+                    stopSessionMonitoring();
+                    
+                    setTimeout(() => {
+                        window.location.href = '/login';
+                    }, 2000);
+                    return;
+                }
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (!data.sessionActive) {
+                        // Sesión no válida
+                        showAlert('Tu sesión ha sido cerrada. Redirigiendo al login...', 'warning');
+                        localStorage.removeItem('authToken');
+                        authToken = null;
+                        currentUser = null;
+                        stopSessionMonitoring();
+                        
+                        setTimeout(() => {
+                            window.location.href = '/login';
+                        }, 2000);
+                    }
+                }
+            } catch (error) {
+                console.error('Error verificando sesión remota:', error);
+                // No hacer nada en errores de red para evitar desconexiones por problemas temporales
+            }
+        }
+        
+        function stopSessionMonitoring() {
+            if (sessionCheckInterval) {
+                clearInterval(sessionCheckInterval);
+                sessionCheckInterval = null;
+            }
+        }
+        
+        // Inicializar verificación de sesión cuando el usuario se loguea
+        function initializeUser() {
+            if (authToken) {
+                checkAuth().then(() => {
+                    if (currentUser) {
+                        startSessionMonitoring();
+                        console.log('🔍 Monitoreo de sesión remota activado (cada 3 segundos)');
+                    }
+                });
+            }
+        }
+        
+        // Inicializar cuando la página cargue
+        document.addEventListener('DOMContentLoaded', function() {
+            setupActivityDetection();
+            initializeUser();
+        });
+        
+        // Detener monitoreo cuando la página se cierre
+        window.addEventListener('beforeunload', stopSessionMonitoring);
+        
+        // Función global para verificar si la sesión sigue siendo válida
+        function verificarSesionGlobal() {
+            const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+            if (!token) {
+                return;
+            }
+            
+            fetch('/api/auth/verify-session', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => {
+                if (response.status === 401) {
+                    // Sesión inválida o cerrada remotamente
+                    alert('Tu sesión ha sido cerrada por un administrador. Serás redirigido al login.');
+                    localStorage.removeItem('authToken');
+                    sessionStorage.removeItem('authToken');
+                    window.location.href = '/login';
+                    return;
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data && !data.valid) {
+                    // Sesión inválida
+                    alert('Tu sesión ha expirado o fue cerrada. Serás redirigido al login.');
+                    localStorage.removeItem('authToken');
+                    sessionStorage.removeItem('authToken');
+                    window.location.href = '/login';
+                }
+            })
+            .catch(error => {
+                console.error('Error verificando sesión:', error);
+                // No hacer nada en caso de error de red para evitar desconexiones innecesarias
+            });
+        }
+        
+        // SISTEMA DE AUTOLOGOUT DE 5 MINUTOS CON PROMPT DE 2 MINUTOS
+        let autologoutTimer = null;
+        let warningTimer = null;
+        let isWarningShown = false;
+        const AUTOLOGOUT_TIME = 5 * 60 * 1000; // 5 minutos
+        const WARNING_TIME = 3 * 60 * 1000; // Mostrar warning a los 3 minutos (2 min antes del logout)
+
+        function resetAutologoutTimer() {
+            // Limpiar timers existentes
+            if (autologoutTimer) clearTimeout(autologoutTimer);
+            if (warningTimer) clearTimeout(warningTimer);
+            isWarningShown = false;
+            
+            // Ocultar warning si está visible
+            hideInactivityWarning();
+            
+            // Solo activar si hay token y no estamos en login
+            const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+            if (!token || window.location.pathname === '/login') return;
+            
+            // Timer para mostrar warning
+            warningTimer = setTimeout(() => {
+                showInactivityWarning();
+            }, WARNING_TIME);
+            
+            // Timer para logout automático
+            autologoutTimer = setTimeout(() => {
+                performAutologout();
+            }, AUTOLOGOUT_TIME);
+        }
+
+        function showInactivityWarning() {
+            if (isWarningShown) return;
+            isWarningShown = true;
+            
+            const warningHtml = `
+                <div id="inactivityWarning" class="alert alert-warning alert-dismissible position-fixed" 
+                     style="top: 20px; right: 20px; z-index: 9999; min-width: 350px;">
+                    <h6><i class="fas fa-clock me-2"></i>Sesión por expirar</h6>
+                    <p class="mb-2">Tu sesión expirará en <strong>2 minutos</strong> por inactividad.</p>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-success btn-sm" onclick="extendSession()">
+                            <i class="fas fa-refresh me-1"></i>Mantener sesión
+                        </button>
+                        <button class="btn btn-secondary btn-sm" onclick="hideInactivityWarning()">
+                            <i class="fas fa-times me-1"></i>Cerrar
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', warningHtml);
+        }
+
+        function hideInactivityWarning() {
+            const warning = document.getElementById('inactivityWarning');
+            if (warning) {
+                warning.remove();
+            }
+            isWarningShown = false;
+        }
+
+        function extendSession() {
+            hideInactivityWarning();
+            resetAutologoutTimer();
+            console.log('✅ Sesión extendida');
+        }
+
+        function performAutologout() {
+            console.log('🚪 Sesión cerrada por inactividad');
+            
+            // Limpiar datos
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('currentUser');
+            sessionStorage.removeItem('authToken');
+            
+            // Mostrar mensaje
+            alert('Tu sesión ha expirado por inactividad. Serás redirigido al login.');
+            
+            // Redirigir al login
+            window.location.href = '/login';
+        }
+
+        // Eventos que reinician el timer (actividad del usuario)
+        const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+        
+        function setupActivityDetection() {
+            activityEvents.forEach(event => {
+                document.addEventListener(event, resetAutologoutTimer, true);
+            });
+            
+            // Inicializar timer
+            resetAutologoutTimer();
+        }
+
+        // Inicializar cuando el DOM esté listo
+        document.addEventListener('DOMContentLoaded', function() {
+            const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+            if (token && window.location.pathname !== '/login') {
+                setupActivityDetection();
+                console.log('🕐 Sistema de autologout activado: 5 minutos');
+            }
+        });
+    </script>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

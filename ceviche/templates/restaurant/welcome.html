@@ -1,0 +1,42 @@
+﻿{% extends "base.html" %}
+{% block title %}Bienvenido - Cevichería{% endblock %}
+{% block content %}
+<div class="container py-4 text-center">
+    <h1 class="display-4 text-primary">¡Bienvenido a Nuestra Cevichería!</h1>
+    <p class="lead">Para realizar tu pedido, por favor selecciona una mesa disponible</p>
+    <div class="mt-4">
+        <a href="{{ url_for('restaurant_qr.select_table') }}" class="btn btn-primary btn-lg">
+            <i class="fas fa-utensils"></i> Seleccionar Mesa
+        </a>
+    </div>
+    <div class="row mt-5">
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <i class="fas fa-fish fa-3x text-primary mb-3"></i>
+                    <h5>Pescado Fresco</h5>
+                    <p>Los mejores ceviches con pescado del día</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <i class="fas fa-pepper-hot fa-3x text-danger mb-3"></i>
+                    <h5>Sabor Peruano</h5>
+                    <p>Auténticos sabores de la costa peruana</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <i class="fas fa-clock fa-3x text-success mb-3"></i>
+                    <h5>Servicio Rápido</h5>
+                    <p>Atención eficiente y personalizada</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

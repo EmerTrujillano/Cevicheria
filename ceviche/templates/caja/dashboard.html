@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Caja - Cevichería{% endblock %}
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>Panel de Caja</h1>
+            <p class="text-muted">Gestión de ventas y pagos</p>
+        </div>
+        <div>
+            <span class="badge bg-success fs-6 me-2">Cajero: {{ session.get('username', 'caja') }}</span>
+            <a href="/api/auth/logout" class="btn btn-outline-danger">
+                <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+            </a>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h5>Ventas del Día</h5>
+                    <h2 id="ventas-dia">$0.00</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-warning text-dark">
+                <div class="card-body">
+                    <h5>Pedidos Pendientes</h5>
+                    <h2 id="pedidos-pendientes">0</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <h5>Transacciones</h5>
+                    <h2 id="total-transacciones">0</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Pedidos por Cobrar</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Mesa</th>
+                                <th>Total</th>
+                                <th>Método de Pago</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pedidos-por-cobrar">
+                            <!-- Pedidos dinámicos -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

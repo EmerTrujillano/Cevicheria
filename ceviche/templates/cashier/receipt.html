@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recibo - Mesa {{ order.table.number if order.table else 'N/A' }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 300px;
+            margin: 0 auto;
+            padding: 20px;
+            background: white;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #000;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+        .restaurant-name {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .restaurant-info {
+            font-size: 12px;
+            color: #666;
+        }
+        .order-info {
+            margin-bottom: 15px;
+            font-size: 12px;
+        }
+        .order-info div {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 3px;
+        }
+        .items {
+            border-top: 1px dashed #000;
+            border-bottom: 1px dashed #000;
+            padding: 10px 0;
+            margin-bottom: 15px;
+        }
+        .item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 12px;
+        }
+        .item-details {
+            flex-grow: 1;
+        }
+        .item-price {
+            text-align: right;
+            white-space: nowrap;
+            margin-left: 10px;
+        }
+        .total-section {
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .total-line {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+        .payment-info {
+            margin-top: 15px;
+            padding-top: 10px;
+            border-top: 1px solid #000;
+            font-size: 12px;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 10px;
+            color: #666;
+        }
+        @media print {
+            body {
+                padding: 0;
+                max-width: none;
+            }
+            .no-print {
+                display: none;
+            }
+        }
+        .print-button {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <button class="print-button no-print" onclick="window.print()">🖨️ Imprimir</button>
+    
+    <div class="header">
+        <div class="restaurant-name">CEVICHERÍA PERUANA</div>
+        <div class="restaurant-info">
+            Av. Principal 123<br>
+            Tel: (01) 234-5678<br>
+            RUC: 20123456789
+        </div>
+    </div>
+
+    <div class="order-info">
+        <div><span>Fecha:</span> <span>{{ order.created_at.strftime('%d/%m/%Y %H:%M') }}</span></div>
+        <div><span>Orden:</span> <span>{{ order.order_number }}</span></div>
+        <div><span>Mesa:</span> <span>{{ order.table.number if order.table else 'N/A' }}</span></div>
+        {% if order.customer_name %}
+        <div><span>Cliente:</span> <span>{{ order.customer_name }}</span></div>
+        {% endif %}
+        {% if waiter %}
+        <div><span>Mozo:</span> <span>{{ waiter.username }}</span></div>
+        {% endif %}
+        {% if cashier %}
+        <div><span>Cajero:</span> <span>{{ cashier.username }}</span></div>
+        {% endif %}
+    </div>
+
+    <div class="items">
+        {% for item in items %}
+        <div class="item">
+            <div class="item-details">
+                <div>{{ item.product.name }}</div>
+                {% if item.special_instructions %}
+                <div style="font-size: 10px; color: #666; margin-left: 10px;">
+                    {{ item.special_instructions }}
+                </div>
+                {% endif %}
+                <div style="font-size: 10px; color: #666;">
+                    {{ item.quantity }} x S/ {{ "%.2f"|format(item.product.price) }}
+                </div>
+            </div>
+            <div class="item-price">
+                S/ {{ "%.2f"|format(item.quantity * item.product.price) }}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="total-section">
+        <div class="total-line">
+            <span>TOTAL:</span>
+            <span>S/ {{ "%.2f"|format(total) }}</span>
+        </div>
+    </div>
+
+    <div class="payment-info">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
+            <span>Método de pago:</span>
+            <span>
+                {% if order.payment_method == 'efectivo' %}
+                    Efectivo
+                {% elif order.payment_method == 'tarjeta' %}
+                    Tarjeta
+                {% elif order.payment_method == 'yapeplin' %}
+                    Yape/Plin
+                {% else %}
+                    {{ order.payment_method }}
+                {% endif %}
+            </span>
+        </div>
+        
+        {% if order.payment_method == 'efectivo' and order.amount_received %}
+        <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
+            <span>Recibido:</span>
+            <span>S/ {{ "%.2f"|format(order.amount_received) }}</span>
+        </div>
+        {% if order.change_given and order.change_given > 0 %}
+        <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
+            <span>Cambio:</span>
+            <span>S/ {{ "%.2f"|format(order.change_given) }}</span>
+        </div>
+        {% endif %}
+        {% endif %}
+        
+        <div style="display: flex; justify-content: space-between; margin-top: 10px;">
+            <span>Fecha de pago:</span>
+            <span>{{ order.paid_at.strftime('%d/%m/%Y %H:%M') if order.paid_at else 'N/A' }}</span>
+        </div>
+    </div>
+
+    <div class="footer">
+        ¡Gracias por su preferencia!<br>
+        ¡Esperamos verle pronto!<br><br>
+        Este documento no es válido como comprobante fiscal
+    </div>
+
+    <script>
+        // Auto imprimir al cargar
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                window.print();
+            }, 500);
+        });
+    </script>
+</body>
+</html>

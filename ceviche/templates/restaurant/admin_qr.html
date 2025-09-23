@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}Generar QR - Admin{% endblock %}
+{% block content %}
+<div class="container py-4">
+    <h1 class="text-center mb-4">QR Único del Restaurante</h1>
+    
+    {% if qr_data.success %}
+    <div class="row justify-content-center">
+        <div class="col-md-6 text-center">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-qrcode"></i> Código QR del Restaurante</h5>
+                </div>
+                <div class="card-body">
+                    <img src="{{ qr_data.qr_image }}" alt="QR Code" class="img-fluid mb-3" style="max-width: 300px;">
+                    <p><strong>URL:</strong> {{ qr_data.url }}</p>
+                    <p><small class="text-muted">Generado el: {{ qr_data.generated_at }}</small></p>
+                    
+                    <div class="mt-3">
+                        <button class="btn btn-primary" onclick="downloadQR()">
+                            <i class="fas fa-download"></i> Descargar QR
+                        </button>
+                        <button class="btn btn-success" onclick="printQR()">
+                            <i class="fas fa-print"></i> Imprimir QR
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-info-circle"></i> Instrucciones de Uso</h5>
+                </div>
+                <div class="card-body">
+                    <ol>
+                        <li><strong>Coloca el QR:</strong> Imprime y coloca este código QR en un lugar visible del restaurante (entrada, mesas, etc.)</li>
+                        <li><strong>Los clientes escanean:</strong> Al escanear el QR, serán dirigidos a la página de bienvenida</li>
+                        <li><strong>Selección de mesa:</strong> Los clientes podrán ver y seleccionar una mesa disponible</li>
+                        <li><strong>Pedido directo:</strong> Una vez seleccionada la mesa, pueden hacer su pedido directamente</li>
+                        <li><strong>Gestión unificada:</strong> Un solo QR para todo el restaurante, más fácil de gestionar</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    {% else %}
+    <div class="alert alert-danger">
+        <h4><i class="fas fa-exclamation-triangle"></i> Error</h4>
+        <p>{{ qr_data.error }}</p>
+        <button class="btn btn-primary" onclick="generateNewQR()">
+            <i class="fas fa-refresh"></i> Intentar Nuevamente
+        </button>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function downloadQR() {
+    const img = document.querySelector('img[alt="QR Code"]');
+    const link = document.createElement('a');
+    link.download = 'restaurant-qr.png';
+    link.href = img.src;
+    link.click();
+}
+
+function printQR() {
+    const printContent = `
+        <html>
+        <head>
+            <title>QR Cevichería</title>
+            <style>
+                body { text-align: center; padding: 20px; font-family: Arial, sans-serif; }
+                img { max-width: 400px; }
+                h1 { color: #006A96; }
+            </style>
+        </head>
+        <body>
+            <h1>Cevichería - Menú Digital</h1>
+            <p>Escanea este código para ver nuestro menú y hacer tu pedido</p>
+            <img src="${document.querySelector('img[alt="QR Code"]').src}" alt="QR Code">
+            <p><strong>{{ qr_data.url }}</strong></p>
+            <p>¡Disfruta de nuestros deliciosos ceviches!</p>
+        </body>
+        </html>
+    `;
+    
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    printWindow.print();
+}
+
+function generateNewQR() {
+    fetch('/restaurant/api/generate-qr')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error al generar QR');
+        });
+}
+</script>
+{% endblock %}

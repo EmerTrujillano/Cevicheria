@@ -1,0 +1,393 @@
+{% extends "base.html" %}
+{% block title %}Supervisión - Admin{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1><i class="fas fa-monitor"></i> Supervisión en Tiempo Real</h1>
+                    <p class="text-muted">Monitoreo general del estado del local</p>
+                </div>
+                <div class="d-flex align-items-center gap-3">
+                    <div class="d-flex align-items-center">
+                        <div class="spinner-border spinner-border-sm text-success me-2" id="loading-indicator" style="display: none;"></div>
+                        <span class="badge bg-success" id="status-indicator">
+                            <i class="fas fa-circle"></i> Conectado
+                        </span>
+                    </div>
+                    <small class="text-muted">
+                        Última actualización: <span id="ultima-actualizacion">--:--</span>
+                    </small>
+                    <a href="/admin" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Volver al Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estado general del sistema -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5><i class="fas fa-users"></i> Usuarios Conectados</h5>
+                            <h2 id="total-usuarios">0</h2>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-user-check fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5><i class="fas fa-chair"></i> Mesas Ocupadas</h5>
+                            <h2 id="mesas-ocupadas">0</h2>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-utensils fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-dark">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5><i class="fas fa-clock"></i> Pedidos Pendientes</h5>
+                            <h2 id="pedidos-pendientes">0</h2>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-hourglass-half fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5><i class="fas fa-dollar-sign"></i> Ventas del Día</h5>
+                            <h2 id="ventas-dia">S/. 0</h2>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-chart-line fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estado por roles -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-users-cog"></i> Personal Conectado por Rol</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Rol</th>
+                                    <th>Conectados</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody id="personal-conectado">
+                                <tr>
+                                    <td><i class="fas fa-user-tie"></i> Administradores</td>
+                                    <td><span class="badge bg-primary" id="admin-count">0</span></td>
+                                    <td><span class="badge bg-success">Activo</span></td>
+                                </tr>
+                                <tr>
+                                    <td><i class="fas fa-user"></i> Mozos</td>
+                                    <td><span class="badge bg-info" id="mozo-count">0</span></td>
+                                    <td><span class="badge bg-success">Activo</span></td>
+                                </tr>
+                                <tr>
+                                    <td><i class="fas fa-utensils"></i> Cocina</td>
+                                    <td><span class="badge bg-warning" id="cocina-count">0</span></td>
+                                    <td><span class="badge bg-success">Activo</span></td>
+                                </tr>
+                                <tr>
+                                    <td><i class="fas fa-cash-register"></i> Cajeros</td>
+                                    <td><span class="badge bg-success" id="cajero-count">0</span></td>
+                                    <td><span class="badge bg-success">Activo</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5><i class="fas fa-chart-pie"></i> Estado de Mesas en Tiempo Real</h5>
+                    <div class="btn-group btn-group-sm" role="group">
+                        <input type="radio" class="btn-check" name="filtro-mesas" id="todas-mesas" autocomplete="off" checked>
+                        <label class="btn btn-outline-primary" for="todas-mesas">Todas</label>
+                        
+                        <input type="radio" class="btn-check" name="filtro-mesas" id="ocupadas-mesas" autocomplete="off">
+                        <label class="btn btn-outline-danger" for="ocupadas-mesas">Ocupadas</label>
+                        
+                        <input type="radio" class="btn-check" name="filtro-mesas" id="libres-mesas" autocomplete="off">
+                        <label class="btn btn-outline-success" for="libres-mesas">Libres</label>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Mesa</th>
+                                    <th>Estado</th>
+                                    <th>Zona</th>
+                                    <th>Tiempo Ocupada</th>
+                                </tr>
+                            </thead>
+                            <tbody id="estado-mesas">
+                                <!-- Se llenará dinámicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-2">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle"></i> 
+                            Las mesas con más de 2 horas de ocupación se resaltan en amarillo
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Actividad reciente -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-history"></i> Actividad Reciente</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Hora</th>
+                                    <th>Usuario</th>
+                                    <th>Acción</th>
+                                    <th>Detalles</th>
+                                </tr>
+                            </thead>
+                            <tbody id="actividad-reciente">
+                                <!-- Se llenará dinámicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Actualización en tiempo real de la supervisión
+let supervisionInterval;
+
+function actualizarSupervision() {
+    // Mostrar indicador de carga
+    const loadingIndicator = document.getElementById('loading-indicator');
+    const statusIndicator = document.getElementById('status-indicator');
+    
+    loadingIndicator.style.display = 'inline-block';
+    
+    // Obtener estadísticas generales
+    fetch('/admin/api/real-time-status')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            loadingIndicator.style.display = 'none';
+            
+            // Actualizar indicador de estado
+            statusIndicator.innerHTML = '<i class="fas fa-circle"></i> Conectado';
+            statusIndicator.className = 'badge bg-success';
+            
+            // Actualizar timestamp
+            const ahora = new Date();
+            document.getElementById('ultima-actualizacion').textContent = 
+                ahora.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            
+            if (data.success) {
+                document.getElementById('total-usuarios').textContent = data.usuarios_activos;
+                document.getElementById('pedidos-pendientes').textContent = data.pedidos_pendientes;
+                document.getElementById('ventas-dia').textContent = 'S/. ' + data.ventas_dia.toFixed(2);
+                
+                // Actualizar contadores por rol
+                if (data.usuarios_por_rol) {
+                    document.getElementById('admin-count').textContent = data.usuarios_por_rol.admin || 0;
+                    document.getElementById('mozo-count').textContent = data.usuarios_por_rol.mozo || 0;
+                    document.getElementById('cocina-count').textContent = data.usuarios_por_rol.cocina || 0;
+                    document.getElementById('cajero-count').textContent = data.usuarios_por_rol.cajero || 0;
+                }
+
+                // Actualizar estado de mesas con datos mejorados
+                if (data.mesas_detalle) {
+                    const estadoMesas = document.getElementById('estado-mesas');
+                    estadoMesas.innerHTML = '';
+                    
+                    // Ordenar por tiempo de ocupación (descendente)
+                    const mesasOrdenadas = data.mesas_detalle.sort((a, b) => {
+                        if (a.estado === 'occupied' && b.estado === 'occupied') {
+                            return b.tiempo_segundos - a.tiempo_segundos;
+                        }
+                        if (a.estado === 'occupied') return -1;
+                        if (b.estado === 'occupied') return 1;
+                        return a.numero - b.numero;
+                    });
+                    
+                    mesasOrdenadas.forEach(mesa => {
+                        const row = document.createElement('tr');
+                        const estadoBadge = mesa.estado === 'occupied' ? 
+                            '<span class="badge bg-danger">Ocupada</span>' : 
+                            '<span class="badge bg-success">Libre</span>';
+                        
+                        const zona = mesa.zona || 'General';
+                        const tiempo = mesa.tiempo_ocupada || '-';
+                        
+                        row.innerHTML = `
+                            <td><strong>Mesa ${mesa.numero}</strong></td>
+                            <td>${estadoBadge}</td>
+                            <td><small class="text-muted">${zona}</small></td>
+                            <td>${tiempo}</td>
+                        `;
+                        
+                        // Resaltar mesas ocupadas por mucho tiempo (>2 horas)
+                        if (mesa.estado === 'occupied' && mesa.tiempo_segundos > 7200) {
+                            row.classList.add('table-warning');
+                        }
+                        
+                        estadoMesas.appendChild(row);
+                    });
+                    
+                    // Actualizar contador de mesas
+                    const mesasOcupadas = mesasOrdenadas.filter(m => m.estado === 'occupied').length;
+                    const totalMesas = mesasOrdenadas.length;
+                    document.getElementById('mesas-ocupadas').textContent = `${mesasOcupadas}/${totalMesas}`;
+                    
+                    // Aplicar filtro actual
+                    const filtroActual = document.querySelector('input[name="filtro-mesas"]:checked');
+                    if (filtroActual) {
+                        filtrarMesas(filtroActual.id);
+                    }
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error al obtener estado en tiempo real:', error);
+            
+            loadingIndicator.style.display = 'none';
+            statusIndicator.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error de conexión';
+            statusIndicator.className = 'badge bg-danger';
+            
+            // Actualizar timestamp con error
+            const ahora = new Date();
+            document.getElementById('ultima-actualizacion').textContent = 
+                `Error ${ahora.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}`;
+        });
+
+    // Obtener actividad reciente
+    fetch('/admin/api/actividad-reciente')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const actividadReciente = document.getElementById('actividad-reciente');
+                actividadReciente.innerHTML = '';
+                
+                data.actividades.forEach(actividad => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${actividad.hora}</td>
+                        <td>${actividad.usuario}</td>
+                        <td>${actividad.accion}</td>
+                        <td>${actividad.detalles}</td>
+                    `;
+                    actividadReciente.appendChild(row);
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error al obtener actividad reciente:', error);
+        });
+}
+
+// Inicializar supervisión
+document.addEventListener('DOMContentLoaded', function() {
+    actualizarSupervision();
+    supervisionInterval = setInterval(actualizarSupervision, 15000); // Actualizar cada 15 segundos
+    
+    // Configurar filtros de mesas
+    configurarFiltrosMesas();
+});
+
+// Configurar los filtros de estado de mesas
+function configurarFiltrosMesas() {
+    const filtros = document.querySelectorAll('input[name="filtro-mesas"]');
+    filtros.forEach(filtro => {
+        filtro.addEventListener('change', function() {
+            filtrarMesas(this.id);
+        });
+    });
+}
+
+// Filtrar mesas según el criterio seleccionado
+function filtrarMesas(filtroId) {
+    const filas = document.querySelectorAll('#estado-mesas tr');
+    
+    filas.forEach(fila => {
+        const estadoBadge = fila.querySelector('.badge');
+        if (!estadoBadge) return;
+        
+        const esOcupada = estadoBadge.classList.contains('bg-danger');
+        
+        switch(filtroId) {
+            case 'todas-mesas':
+                fila.style.display = '';
+                break;
+            case 'ocupadas-mesas':
+                fila.style.display = esOcupada ? '' : 'none';
+                break;
+            case 'libres-mesas':
+                fila.style.display = !esOcupada ? '' : 'none';
+                break;
+        }
+    });
+}
+
+// Limpiar interval al salir de la página
+window.addEventListener('beforeunload', function() {
+    if (supervisionInterval) {
+        clearInterval(supervisionInterval);
+    }
+});
+</script>
+{% endblock %}

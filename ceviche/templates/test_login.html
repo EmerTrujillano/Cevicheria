@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Login Debug</title>
+</head>
+<body>
+    <h1>Test Login Debug</h1>
+    
+    <div>
+        <h2>Test Mozo1</h2>
+        <button onclick="testLogin('mozo1', 'mozo1pass')">Test mozo1</button>
+        <div id="result-mozo1"></div>
+    </div>
+    
+    <div>
+        <h2>Test Admin</h2>
+        <button onclick="testLogin('admin', 'admin2025')">Test admin</button>
+        <div id="result-admin"></div>
+    </div>
+    
+    <div>
+        <h2>Debug Info</h2>
+        <div id="debug-info"></div>
+    </div>
+
+    <script>
+    async function testLogin(username, password) {
+        const resultDiv = document.getElementById(`result-${username}`);
+        const debugDiv = document.getElementById('debug-info');
+        
+        try {
+            console.log(`Testing login for: ${username}`);
+            
+            const response = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ username, password })
+            });
+            
+            console.log(`Response status: ${response.status}`);
+            
+            const data = await response.json();
+            console.log('Response data:', data);
+            
+            if (response.ok) {
+                resultDiv.innerHTML = `
+                    <div style="color: green;">
+                        ✅ LOGIN EXITOSO<br>
+                        Usuario: ${data.user.username}<br>
+                        Rol: <strong>${data.user.role}</strong><br>
+                        Token: ${data.access_token.substring(0, 20)}...
+                    </div>
+                `;
+                
+                // Test redirection logic
+                let redirectUrl = '';
+                switch(data.user.role) {
+                    case 'admin':
+                        redirectUrl = '/admin/';
+                        break;
+                    case 'mozo':
+                        redirectUrl = '/mozo/';
+                        break;
+                    case 'cocina':
+                        redirectUrl = '/cocina/';
+                        break;
+                    case 'cajero':
+                        redirectUrl = '/caja/';
+                        break;
+                    default:
+                        redirectUrl = 'ROLE NOT RECOGNIZED';
+                }
+                
+                debugDiv.innerHTML += `
+                    <p><strong>${username}</strong>: Rol "${data.user.role}" → Redirection: ${redirectUrl}</p>
+                `;
+                
+            } else {
+                resultDiv.innerHTML = `
+                    <div style="color: red;">
+                        ❌ LOGIN FALLÓ<br>
+                        Error: ${data.message || 'Unknown error'}
+                    </div>
+                `;
+            }
+            
+        } catch (error) {
+            console.error('Error:', error);
+            resultDiv.innerHTML = `
+                <div style="color: red;">
+                    ❌ ERROR DE CONEXIÓN<br>
+                    ${error.message}
+                </div>
+            `;
+        }
+    }
+    </script>
+</body>
+</html>

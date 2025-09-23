@@ -1,0 +1,554 @@
+{% extends "base.html" %}
+{% block title %}Gestión de Menú - Admin{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1><i class="fas fa-utensils"></i> Gestión de Menú</h1>
+                    <p class="text-muted">Administrar productos y categorías del menú</p>
+                </div>
+                <div>
+                    <a href="/admin" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Volver al Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navegación por pestañas -->
+    <ul class="nav nav-tabs" id="menuTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="categorias-tab" data-bs-toggle="tab" data-bs-target="#categorias" type="button" role="tab">
+                <i class="fas fa-tags"></i> Categorías
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="productos-tab" data-bs-toggle="tab" data-bs-target="#productos" type="button" role="tab">
+                <i class="fas fa-plate-wheat"></i> Productos
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="estadisticas-tab" data-bs-toggle="tab" data-bs-target="#estadisticas" type="button" role="tab">
+                <i class="fas fa-chart-bar"></i> Estadísticas
+            </button>
+        </li>
+    </ul>
+
+    <!-- Contenido de las pestañas -->
+    <div class="tab-content" id="menuTabContent">
+        <!-- Gestión de Categorías -->
+        <div class="tab-pane fade show active" id="categorias" role="tabpanel">
+            <div class="card mt-3">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5><i class="fas fa-tags"></i> Gestión de Categorías</h5>
+                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#nuevaCategoriaModal">
+                            <i class="fas fa-plus"></i> Nueva Categoría
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nombre</th>
+                                    <th>Descripción</th>
+                                    <th>Productos</th>
+                                    <th>Estación</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-categorias">
+                                <!-- Se llenará dinámicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gestión de Productos -->
+        <div class="tab-pane fade" id="productos" role="tabpanel">
+            <div class="card mt-3">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5><i class="fas fa-plate-wheat"></i> Gestión de Productos</h5>
+                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#nuevoProductoModal">
+                            <i class="fas fa-plus"></i> Nuevo Producto
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Filtros -->
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <select class="form-select" id="filtro-categoria">
+                                <option value="">Todas las categorías</option>
+                                <!-- Se llenará dinámicamente -->
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <select class="form-select" id="filtro-disponibilidad">
+                                <option value="">Todos los estados</option>
+                                <option value="true">Disponibles</option>
+                                <option value="false">No disponibles</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <input type="text" class="form-control" id="buscar-producto" placeholder="Buscar producto...">
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nombre</th>
+                                    <th>Categoría</th>
+                                    <th>Precio</th>
+                                    <th>Descripción</th>
+                                    <th>Disponible</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-productos">
+                                <!-- Se llenará dinámicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Estadísticas -->
+        <div class="tab-pane fade" id="estadisticas" role="tabpanel">
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5><i class="fas fa-chart-bar"></i> Estadísticas del Menú</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="card bg-primary text-white">
+                                <div class="card-body text-center">
+                                    <h3 id="total-categorias">0</h3>
+                                    <p>Categorías</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-success text-white">
+                                <div class="card-body text-center">
+                                    <h3 id="total-productos">0</h3>
+                                    <p>Productos</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-warning text-dark">
+                                <div class="card-body text-center">
+                                    <h3 id="productos-disponibles">0</h3>
+                                    <p>Disponibles</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-danger text-white">
+                                <div class="card-body text-center">
+                                    <h3 id="productos-no-disponibles">0</h3>
+                                    <p>No Disponibles</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h6>Productos Más Vendidos</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th>Producto</th>
+                                                    <th>Ventas</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="productos-populares">
+                                                <!-- Se llenará dinámicamente -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h6>Productos por Categoría</h6>
+                                </div>
+                                <div class="card-body">
+                                    <canvas id="chartProductosPorCategoria"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Nueva Categoría -->
+<div class="modal fade" id="nuevaCategoriaModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Nueva Categoría</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="form-nueva-categoria">
+                    <div class="mb-3">
+                        <label for="categoria-nombre" class="form-label">Nombre</label>
+                        <input type="text" class="form-control" id="categoria-nombre" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="categoria-descripcion" class="form-label">Descripción</label>
+                        <textarea class="form-control" id="categoria-descripcion" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="categoria-estacion" class="form-label">Estación</label>
+                        <select class="form-select" id="categoria-estacion">
+                            <option value="frios">Fríos</option>
+                            <option value="calientes">Calientes</option>
+                            <option value="frituras">Frituras</option>
+                            <option value="bebidas">Bebidas</option>
+                            <option value="postres">Postres</option>
+                            <option value="acompañamientos">Acompañamientos</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="guardarCategoria()">Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Nuevo Producto -->
+<div class="modal fade" id="nuevoProductoModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Nuevo Producto</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="form-nuevo-producto">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="producto-nombre" class="form-label">Nombre</label>
+                                <input type="text" class="form-control" id="producto-nombre" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="producto-precio" class="form-label">Precio</label>
+                                <input type="number" step="0.01" class="form-control" id="producto-precio" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="producto-categoria" class="form-label">Categoría</label>
+                        <select class="form-select" id="producto-categoria" required>
+                            <!-- Se llenará dinámicamente -->
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="producto-descripcion" class="form-label">Descripción</label>
+                        <textarea class="form-control" id="producto-descripcion" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="producto-disponible" checked>
+                            <label class="form-check-label" for="producto-disponible">
+                                Disponible
+                            </label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="guardarProducto()">Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+let categorias = [];
+let productos = [];
+
+// Cargar datos iniciales
+document.addEventListener('DOMContentLoaded', function() {
+    cargarCategorias();
+    cargarProductos();
+    cargarEstadisticas();
+});
+
+function cargarCategorias() {
+    fetch('/admin/api/categorias')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                categorias = data.categorias;
+                renderizarCategorias();
+                actualizarSelectCategorias();
+            }
+        })
+        .catch(error => {
+            console.error('Error al cargar categorías:', error);
+            mostrarError('Error al cargar categorías');
+        });
+}
+
+function cargarProductos() {
+    fetch('/admin/api/productos')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                productos = data.productos;
+                renderizarProductos();
+            }
+        })
+        .catch(error => {
+            console.error('Error al cargar productos:', error);
+            mostrarError('Error al cargar productos');
+        });
+}
+
+function renderizarCategorias() {
+    const tabla = document.getElementById('tabla-categorias');
+    tabla.innerHTML = '';
+
+    categorias.forEach(categoria => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${categoria.id}</td>
+            <td><strong>${categoria.name}</strong></td>
+            <td>${categoria.description || '-'}</td>
+            <td><span class="badge bg-info">${categoria.productos_count || 0}</span></td>
+            <td><span class="badge bg-secondary">${categoria.station || '-'}</span></td>
+            <td><span class="badge bg-success">Activa</span></td>
+            <td>
+                <button class="btn btn-sm btn-outline-primary" onclick="editarCategoria(${categoria.id})">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger" onclick="eliminarCategoria(${categoria.id})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        `;
+        tabla.appendChild(row);
+    });
+}
+
+function renderizarProductos() {
+    const tabla = document.getElementById('tabla-productos');
+    tabla.innerHTML = '';
+
+    productos.forEach(producto => {
+        const row = document.createElement('tr');
+        const disponibleBadge = producto.available ? 
+            '<span class="badge bg-success">Sí</span>' : 
+            '<span class="badge bg-danger">No</span>';
+
+        row.innerHTML = `
+            <td>${producto.id}</td>
+            <td><strong>${producto.name}</strong></td>
+            <td>${producto.category_name || '-'}</td>
+            <td>S/. ${producto.price}</td>
+            <td>${producto.description || '-'}</td>
+            <td>${disponibleBadge}</td>
+            <td>
+                <button class="btn btn-sm btn-outline-primary" onclick="editarProducto(${producto.id})">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-warning" onclick="toggleDisponibilidad(${producto.id})">
+                    <i class="fas fa-toggle-on"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger" onclick="eliminarProducto(${producto.id})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        `;
+        tabla.appendChild(row);
+    });
+}
+
+function actualizarSelectCategorias() {
+    const selects = ['filtro-categoria', 'producto-categoria'];
+    
+    selects.forEach(selectId => {
+        const select = document.getElementById(selectId);
+        if (select) {
+            if (selectId === 'filtro-categoria') {
+                select.innerHTML = '<option value="">Todas las categorías</option>';
+            } else {
+                select.innerHTML = '<option value="">Seleccionar categoría</option>';
+            }
+            
+            categorias.forEach(categoria => {
+                const option = document.createElement('option');
+                option.value = categoria.id;
+                option.textContent = categoria.name;
+                select.appendChild(option);
+            });
+        }
+    });
+}
+
+function cargarEstadisticas() {
+    // Actualizar contadores
+    document.getElementById('total-categorias').textContent = categorias.length;
+    document.getElementById('total-productos').textContent = productos.length;
+    document.getElementById('productos-disponibles').textContent = productos.filter(p => p.available).length;
+    document.getElementById('productos-no-disponibles').textContent = productos.filter(p => !p.available).length;
+}
+
+function guardarCategoria() {
+    const nombre = document.getElementById('categoria-nombre').value;
+    const descripcion = document.getElementById('categoria-descripcion').value;
+    const estacion = document.getElementById('categoria-estacion').value;
+
+    if (!nombre) {
+        mostrarError('El nombre de la categoría es requerido');
+        return;
+    }
+
+    const data = {
+        name: nombre,
+        description: descripcion,
+        station: estacion
+    };
+
+    fetch('/admin/api/categorias', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            mostrarExito('Categoría creada exitosamente');
+            cargarCategorias();
+            document.getElementById('form-nueva-categoria').reset();
+            bootstrap.Modal.getInstance(document.getElementById('nuevaCategoriaModal')).hide();
+        } else {
+            mostrarError(data.message || 'Error al crear categoría');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        mostrarError('Error al crear categoría');
+    });
+}
+
+function guardarProducto() {
+    const nombre = document.getElementById('producto-nombre').value;
+    const precio = document.getElementById('producto-precio').value;
+    const categoria = document.getElementById('producto-categoria').value;
+    const descripcion = document.getElementById('producto-descripcion').value;
+    const disponible = document.getElementById('producto-disponible').checked;
+
+    if (!nombre || !precio || !categoria) {
+        mostrarError('Nombre, precio y categoría son requeridos');
+        return;
+    }
+
+    const data = {
+        name: nombre,
+        price: parseFloat(precio),
+        category_id: parseInt(categoria),
+        description: descripcion,
+        available: disponible
+    };
+
+    fetch('/admin/api/productos', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            mostrarExito('Producto creado exitosamente');
+            cargarProductos();
+            document.getElementById('form-nuevo-producto').reset();
+            bootstrap.Modal.getInstance(document.getElementById('nuevoProductoModal')).hide();
+        } else {
+            mostrarError(data.message || 'Error al crear producto');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        mostrarError('Error al crear producto');
+    });
+}
+
+function mostrarError(mensaje) {
+    // Implementar notificación de error
+    alert('Error: ' + mensaje);
+}
+
+function mostrarExito(mensaje) {
+    // Implementar notificación de éxito
+    alert('Éxito: ' + mensaje);
+}
+
+// Funciones adicionales (se pueden implementar según necesidad)
+function editarCategoria(id) {
+    console.log('Editar categoría:', id);
+}
+
+function eliminarCategoria(id) {
+    if (confirm('¿Está seguro de eliminar esta categoría?')) {
+        console.log('Eliminar categoría:', id);
+    }
+}
+
+function editarProducto(id) {
+    console.log('Editar producto:', id);
+}
+
+function eliminarProducto(id) {
+    if (confirm('¿Está seguro de eliminar este producto?')) {
+        console.log('Eliminar producto:', id);
+    }
+}
+
+function toggleDisponibilidad(id) {
+    console.log('Toggle disponibilidad producto:', id);
+}
+</script>
+{% endblock %}

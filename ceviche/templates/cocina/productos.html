@@ -1,0 +1,101 @@
+﻿{% extends "base.html" %}
+{% block title %}Cocina - Cevichería{% endblock %}
+{% block content %}
+<div class="container py-4">
+    <h1>Panel de Cocina</h1>
+    <p>Productos de la estación: <span id="estacion-info"></span></p>
+    <div class="row">
+        <div class="col-12">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Mesa</th>
+                        <th>Producto</th>
+                        <th>Cantidad</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="pedidos-cocina">
+                    <!-- Pedidos dinámicos -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<script>
+// JavaScript para vista de productos de cocina
+function cargarEstacionInfo() {
+    fetch('/cocina/station')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('estacion-info').textContent = data.estacion;
+            cargarPedidosCocina();
+        })
+        .catch(error => console.error('Error:', error));
+}
+
+function cargarPedidosCocina() {
+    fetch('/cocina/orders')
+        .then(response => response.json())
+        .then(data => {
+            const tbody = document.getElementById('pedidos-cocina');
+            tbody.innerHTML = '';
+            data.forEach(item => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td>Mesa ${item.mesa_numero}</td>
+                        <td>${item.producto_nombre}</td>
+                        <td>${item.cantidad}</td>
+                        <td>
+                            <span class="badge bg-${getEstadoColor(item.estado)}">${item.estado}</span>
+                        </td>
+                        <td>
+                            <select class="form-select form-select-sm" onchange="cambiarEstado(${item.id}, this.value)">
+                                <option value="pendiente" ${item.estado === 'pendiente' ? 'selected' : ''}>Pendiente</option>
+                                <option value="preparando" ${item.estado === 'preparando' ? 'selected' : ''}>Preparando</option>
+                                <option value="listo" ${item.estado === 'listo' ? 'selected' : ''}>Listo</option>
+                                <option value="entregado" ${item.estado === 'entregado' ? 'selected' : ''}>Entregado</option>
+                            </select>
+                        </td>
+                    </tr>`;
+            });
+        })
+        .catch(error => console.error('Error:', error));
+}
+
+function getEstadoColor(estado) {
+    switch(estado) {
+        case 'pendiente': return 'secondary';
+        case 'preparando': return 'warning';
+        case 'listo': return 'success';
+        case 'entregado': return 'info';
+        default: return 'secondary';
+    }
+}
+
+function cambiarEstado(itemId, nuevoEstado) {
+    fetch('/cocina/update-status', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            item_id: itemId,
+            estado: nuevoEstado
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            cargarPedidosCocina();
+        } else {
+            alert(data.error || 'Error al actualizar estado');
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+// Cargar información al inicio
+cargarEstacionInfo();
+setInterval(cargarPedidosCocina, 10000); // Actualizar cada 10 segundos
+</script>
+{% endblock %}
